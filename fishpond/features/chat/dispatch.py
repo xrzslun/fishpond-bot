@@ -516,6 +516,49 @@ class ChatMixin:
                      "overlimit": "超过今日上限", "failed": "处理失败"}.get(action, action)
             await self.notify_super(ws, f"好友申请：{uid}\n附言：{comment or '无'}\n结果：{label}")
 
+    async def resolve_sticker_image_urls(self, ev: dict) -> list:
+        """把 QQ 表情（mface/无 http 的 image）解析成可下载的图片地址。"""
+        out = []
+        segs = ev.get("message") or []
+        files = []
+        for seg in segs:
+            st, sd = seg.get("type"), seg.get("data") or {}
+            if st not in ("image", "mface"):
+                continue
+            u = str(sd.get("url") or "")
+            f = str(sd.get("file") or sd.get("path") or "")
+            if u.startswith("http"):
+                out.append(u)
+            elif f:
+                files.append(f)
+        if not files and ev.get("message_id"):
+            try:
+                r = await self.onebot_action("get_msg", {"message_id": ev.get("message_id")})
+                msg = ((r or {}).get("data") or {}).get("message") or []
+                for seg in msg:
+                    st, sd = seg.get("type"), seg.get("data") or {}
+                    if st in ("image", "mface"):
+                        u = str(sd.get("url") or "")
+                        if u.startswith("http"):
+                            out.append(u)
+                        elif sd.get("file"):
+                            files.append(str(sd.get("file")))
+            except Exception:
+                pass
+        for f in files[:2]:
+            if f.startswith("http"):
+                out.append(f)
+                continue
+            try:
+                r = await self.onebot_action("get_image", {"file": f})
+                d = (r or {}).get("data") or {}
+                u = str(d.get("url") or d.get("file") or "")
+                if u.startswith("http"):
+                    out.append(u)
+            except Exception:
+                pass
+        return out[:2]
+
     @staticmethod
     def parse_segments(ev: dict, self_id: str) -> dict:
         """把 OneBot 消息段拆成文本/@信息/图片/语音/引用等，纯函数，便于测试。"""
@@ -1021,10 +1064,12 @@ class ChatMixin:
         at_me, at_others, at_target = seg["at_me"], seg["at_others"], seg["at_target"]
         image_urls, stickers = seg["image_urls"], seg["stickers"]
         try:
+            if not image_urls and stickers:
+                image_urls = await self.resolve_sticker_image_urls(ev)
             if image_urls and (mtype == "private" or at_me) and hasattr(self, "auto_collect_sticker"):
                 self.spawn(self.auto_collect_sticker(image_urls[0], user_text), "auto_sticker")
-        except Exception:
-            pass
+        except Exception as e:
+            log.warning("表情自动收录触发失败: %s", e)
         records, reply_ids = seg["records"], seg["reply_ids"]
         self.remember_recent(user_id, user_text)
         try:
