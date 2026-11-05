@@ -184,6 +184,7 @@ class StickerMixin:
             "stickers": [{"name": n, "url": self.sticker_url(n),
                           "description": desc_map.get(n, "")} for n in names],
             "probability": int(self.store.get_setting("sticker_probability", "0") or 0),
+            "daily_limit": int(self.store.get_setting("sticker_daily_limit", "12") or 12),
             "mode": self.store.get_setting("sticker_mode", "smart"),
             "base": (self.store.get_setting("public_base_url", "") or ""),
         })
@@ -403,6 +404,11 @@ class StickerMixin:
             except (TypeError, ValueError):
                 return aiohttp_web.json_response({"code": -1, "message": "概率需为 0-100 的整数"})
             self.store.set_setting("sticker_probability", str(prob))
+        if "daily_limit" in data:
+            try:
+                self.store.set_setting("sticker_daily_limit", str(max(0, min(100, int(data.get("daily_limit") or 0)))))
+            except Exception:
+                pass
         if data.get("mode") in ("random", "smart"):
             self.store.set_setting("sticker_mode", data["mode"])
         host = str(request.host or "").strip()
@@ -525,9 +531,52 @@ class StickerMixin:
                 return r["filename"]
         return None
 
-    async def maybe_send_sticker(self, ws, mtype: str, ev: dict, user_text: str = "", reply: str = ""):
-        prob = self.SI("sticker_probability", 0)
-        if prob <= 0 or random.randint(1, 100) > prob:
+    async def auto_save_sticker_images(self, urls: list, reply: str):
+        """AI 说“存了”时真正落库，失败返回 None。"""
+        if not urls or not reply:
+            return None
+        if not any(k in reply for k in ("存了", "收了", "存起来", "收藏了", "存进", "加入表情")):
+            return None
+        for u in urls[:2]:
+            try:
+                name, desc = await self.save_sticker_from_url(u, "qq", "")
+                if name:
+                    log.info("AI 自动收录表情: %s %s", name, (desc or "")[:30])
+                    return name
+            except Exception as e:
+                log.warning("AI 收录表情失败: %s", e)
+        return None
+
+    async def maybe_send_sticker(self, ws, mtype: str, ev: dict, user_text: str = "", reply: str = "", has_image: bool = False):
+        base = self.SI("sticker_probability", 0)
+        if base <= 0:
+            return
+        # 场景加权：斗图/短回复更容易发，安慰或严肃话题不发
+        prob = base
+        if has_image:
+            prob += 20
+        if any(k in (user_text or "") for k in ("哈哈", "笑死", "草", "图", "表情", "斗图")):
+            prob += 10
+        if any(k in (user_text or "") for k in ("难受", "难过", "哭", "安慰", "认真", "帮帮我")):
+            prob -= 30
+        if len(str(reply or "")) <= 8:
+            prob += 10
+        if prob <= 0 or random.randint(1, 100) > min(90, prob):
+            return
+        now = time.time()
+        key = f"{ev.get('group_id') or ''}:{ev.get('user_id') or ''}"
+        last = getattr(self, "_sticker_last_at", {}).get(key, 0)
+        if now - last < 300:
+            return
+        day = time.strftime("%Y-%m-%d")
+        if getattr(self, "_sticker_day", "") != day:
+            self._sticker_day = day
+            self._sticker_count = 0
+        try:
+            cap = max(0, int(self.store.get_setting("sticker_daily_limit", "12") or 12))
+        except Exception:
+            cap = 12
+        if getattr(self, "_sticker_count", 0) >= cap:
             return
         rows = self.store.sticker_descriptions()
         if not rows:
@@ -536,15 +585,27 @@ class StickerMixin:
         name = None
         if mode == "smart":
             name = await self.smart_pick_sticker(rows, user_text, reply)
-        if not name:
+            if not name:
+                return
+        else:
             name = random.choice([r["filename"] for r in rows])
+        recent = getattr(self, "_sticker_recent", [])
+        if name in recent[-10:]:
+            return
         sd = max(0, min(10000, self.SI("sticker_delay_ms", 800)))
         if sd:
             await asyncio.sleep(sd / 1000.0)
-        base = (self.store.get_setting("public_base_url", "") or "").rstrip("/")
-        if not base:
+        base_url = (self.store.get_setting("public_base_url", "") or "").rstrip("/")
+        if not base_url:
             return
-        await self.send_sticker(ws, mtype, ev, name)
+        ok = await self.send_sticker(ws, mtype, ev, name)
+        if ok:
+            recent.append(name)
+            self._sticker_recent = recent[-20:]
+            self._sticker_last_at = getattr(self, "_sticker_last_at", {})
+            self._sticker_last_at[key] = now
+            self._sticker_count = getattr(self, "_sticker_count", 0) + 1
+            log.info("智能表情已发送: %s", name)
 
     async def send_sticker(self, ws, mtype: str, ev: dict, name: str) -> bool:
         base = (self.store.get_setting("public_base_url", "") or "").rstrip("/")

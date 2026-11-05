@@ -3313,6 +3313,7 @@ async function loadStickers(){
   const r = await fetch(B + '/api/stickers').then(r=>r.json());
   if(r.code!==0) return;
   el('stkprob').value = r.probability;
+  if(el('stkday')) el('stkday').value = r.daily_limit||12;
   el('skmrandom').style.background = (r.mode==='smart') ? '#4b5563' : '#2563eb';
   el('skmsmart').style.background = (r.mode==='smart') ? '#2563eb' : '#4b5563';
   el('stkbase').textContent = r.base ? ('当前表情包访问地址：' + r.base) : '提示：上传一张图后会自动记录访问地址';
@@ -3434,7 +3435,7 @@ async function installStickerPack(){
   }catch(e){ m.textContent = '导入失败：' + e; m.style.color = '#f87171'; }
 }
 async function saveStickerProb(){
-  const r = await fetch(B + '/api/stickers/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({probability: parseInt(el('stkprob').value||'0')})}).then(r=>r.json());
+  const r = await fetch(B + '/api/stickers/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({probability: parseInt(el('stkprob').value||'0'), daily_limit: parseInt(el('stkday').value||'12')})}).then(r=>r.json());
   el('stkmsg').textContent = r.code===0 ? '已保存' : (r.message||'保存失败');
   el('stkmsg').style.color = r.code===0 ? '#4ade80' : '#f87171';
   if(r.code===0) loadStickers();

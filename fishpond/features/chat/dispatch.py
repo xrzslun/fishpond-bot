@@ -1318,6 +1318,15 @@ class ChatMixin:
                 pass
             if self.memory_scope_ok(mtype, user_id) and not is_super:
                 self.schedule_memory_extract(user_id, mem_level, user_text, reply, mtype, list(session.get("history") or [])[-8:])
+            if image_urls and any(k in reply for k in ("存了", "收了", "存起来", "收藏了", "存进", "加入表情")):
+                try:
+                    _saved = await self.auto_save_sticker_images(image_urls, reply)
+                except Exception:
+                    _saved = None
+                if not _saved:
+                    for _k in ("存了存了", "存了", "收了", "存起来", "收藏了", "存进表情包"):
+                        reply = reply.replace(_k, "")
+                    reply = reply.strip() + "（这张没存上，图裂了）"
             prefix = (
                 self.store.get_prefix(user_id)
                 if self.store.get_setting("prefix_enabled", "1") == "1"
@@ -1360,7 +1369,7 @@ class ChatMixin:
                         await asyncio.sleep(seg_ms / 1000.0)
                     await self.send(ws, mtype, ev, part, at_qq=(at_qq if idx == 0 else None))
                 self.reply_count += max(1, len(parts))
-            await self.maybe_send_sticker(ws, mtype, ev, llm_text, reply)
+            await self.maybe_send_sticker(ws, mtype, ev, llm_text, reply, has_image=bool(image_urls))
 
     def open_conversation(self, gid: str, uid: str):
         try:
