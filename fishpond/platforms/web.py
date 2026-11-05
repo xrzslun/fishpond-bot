@@ -66,6 +66,7 @@ class WebMixin:
         app.router.add_get("/api/status", self.api_status)
         app.router.add_get("/api/logs", self.api_logs)
         app.router.add_get("/api/world/state", self.api_world_state)
+        app.router.add_get("/api/world/events", self.api_world_events)
         app.router.add_get("/api/app/ping", self.api_app_ping)
         app.router.add_get("/api/app/tunnel", self.api_app_tunnel)
         app.router.add_get("/api/app/sso", self.api_app_sso)

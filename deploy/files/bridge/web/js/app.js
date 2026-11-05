@@ -160,21 +160,44 @@ async function loadWorld(){
       return '<div style="padding:6px 0;border-bottom:1px solid #1a1f28">'+n.name+' · '+n.role+
         ' · 亲近度 '+n.closeness+'<div class="hint" style="margin-top:2px">'+n.traits+'</div></div>';
     }).join('')||'还没有认识的人';
-    const KIND_TAG={wake:'被吵醒',wake_again:'又被吵醒',sleep:'睡着',meet:'偶遇',task:'任务',proactive:'主动分享',social:'心事',discover:'发现',move:'生活'};
-    const KIND_COLOR={wake:'#f59e0b',wake_again:'#f97316',sleep:'#6b7280',meet:'#38bdf8',task:'#22c55e',proactive:'#a855f7',social:'#ef4444',discover:'#eab308',move:'#64748b'};
-    let html='', lastDay=null;
-    (r.events||[]).slice().reverse().forEach(function(e){
-      const d=new Date(Date.UTC(2026,0,1)); d.setUTCDate(d.getUTCDate()+e.day_index);
-      const dayKey=d.getUTCFullYear()+'-'+(d.getUTCMonth()+1)+'-'+d.getUTCDate();
-      if(dayKey!==lastDay){ lastDay=dayKey; html+='<div style="margin:10px 0 4px;color:#8b93a5;font-size:12px">'+d.getUTCFullYear()+'年'+(d.getUTCMonth()+1)+'月'+d.getUTCDate()+'日</div>'; }
-      const hh=String(Math.floor(e.minutes/60)).padStart(2,'0'), mm=String(e.minutes%60).padStart(2,'0');
-      const tag=KIND_TAG[e.kind]||'生活', color=KIND_COLOR[e.kind]||'#64748b';
-      let text=e.text.replace(/^\d+月\d+日 周. \d\d:\d\d /,'');
-      html+='<div style="padding:5px 0;border-bottom:1px solid #1a1f28"><span style="color:#64748b;font-size:12px">'+hh+':'+mm+'</span> '+
-        '<span style="color:'+color+';font-size:11px;border:1px solid '+color+'55;border-radius:6px;padding:0 5px;margin-right:6px">'+tag+'</span>'+text+'</div>';
-    });
-    el('world_events').innerHTML=html||'还没有事件';
+    renderWorldEvents(r.events);
+    fillWorldDays(r.days||[], r.today||0);
   }catch(e){ el('world_state').textContent='网络错误'; }
+}
+function worldDayLabel(day){
+  const d=new Date(Date.UTC(2026,0,1)); d.setUTCDate(d.getUTCDate()+Number(day||0));
+  return (d.getUTCMonth()+1)+'月'+d.getUTCDate()+'日';
+}
+function fillWorldDays(days, today){
+  const sel=el('world_day'); if(!sel) return;
+  const cur=sel.value;
+  let html='';
+  (days||[]).forEach(function(d){
+    html+='<option value="'+d+'">'+(Number(d)===Number(today)?'今天 · ':'')+worldDayLabel(d)+'</option>';
+  });
+  sel.innerHTML=html||'<option value="'+today+'">今天</option>';
+  sel.value=cur&&Array.from(sel.options).some(function(o){return o.value===cur;})?cur:String(today);
+}
+function renderWorldEvents(events){
+  const KIND_TAG={wake:'被吵醒',wake_again:'又被吵醒',sleep:'睡着',meet:'偶遇',task:'任务',proactive:'主动分享',social:'心事',discover:'发现',move:'生活',photo:'照片'};
+  const KIND_COLOR={wake:'#f59e0b',wake_again:'#f97316',sleep:'#6b7280',meet:'#38bdf8',task:'#22c55e',proactive:'#a855f7',social:'#ef4444',discover:'#eab308',move:'#64748b',photo:'#0ea5e9'};
+  let html='';
+  (events||[]).slice().reverse().forEach(function(e){
+    const hh=String(Math.floor(e.minutes/60)).padStart(2,'0'), mm=String(e.minutes%60).padStart(2,'0');
+    const tag=KIND_TAG[e.kind]||'生活', color=KIND_COLOR[e.kind]||'#64748b';
+    let text=String(e.text||'').replace(/^\d+月\d+日 周. \d\d:\d\d /,'');
+    html+='<div style="padding:5px 0;border-bottom:1px solid #1a1f28"><span style="color:#64748b;font-size:12px">'+hh+':'+mm+'</span> '+
+      '<span style="color:'+color+';font-size:11px;border:1px solid '+color+'55;border-radius:6px;padding:0 5px;margin-right:6px">'+tag+'</span>'+text+'</div>';
+  });
+  el('world_events').innerHTML=html||'这一天还没有事件';
+}
+async function loadWorldEvents(day){
+  try{
+    const r=await fetch(B+'/api/world/events?day_index='+encodeURIComponent(day)).then(x=>x.json());
+    if(r.code!==0) return;
+    renderWorldEvents(r.events||[]);
+    fillWorldDays(r.days||[], r.day_index||0);
+  }catch(e){}
 }
 async function refreshWeather(){
   el('world_weather').textContent='定位中…';

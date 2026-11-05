@@ -446,7 +446,11 @@
   </div>
   <div class="card">
     <h2 style="font-size:14px;color:#8b93a5;margin:0 0 8px">最近事件</h2>
-    <div class="hint" style="margin-bottom:8px">只显示最近 40 条，按天分组；被吵醒、偶遇、任务、主动分享会标出来。</div>
+    <div class="hint" style="margin-bottom:8px">今天显示全部事件；可以切换查看前几天的完整记录。</div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
+      <span style="color:#9aa4b8;font-size:13px">查看</span>
+      <select id="world_day" onchange="loadWorldEvents(this.value)" style="min-width:140px"></select>
+    </div>
     <div id="world_events" class="hint">加载中…</div>
   </div>
 </div>

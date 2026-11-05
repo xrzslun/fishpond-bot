@@ -1817,6 +1817,17 @@ class WorldMixin:
             return [dict(r) for r in c.execute(
                 "SELECT * FROM world_history ORDER BY id DESC LIMIT ?", (limit,))]
 
+    def world_events_for_day(self, day_index: int) -> list:
+        with self.store._conn() as c:
+            return [dict(r) for r in c.execute(
+                "SELECT day_index,minutes,kind,text,created_at FROM world_events WHERE day_index=? ORDER BY minutes,id",
+                (day_index,))]
+
+    def world_event_days(self, limit: int = 60) -> list:
+        with self.store._conn() as c:
+            return [int(r[0]) for r in c.execute(
+                "SELECT DISTINCT day_index FROM world_events ORDER BY day_index DESC LIMIT ?", (limit,))]
+
     def world_recent_events(self, limit: int = 40) -> list:
         with self.store._conn() as c:
             rows = c.execute("SELECT * FROM world_events ORDER BY id DESC LIMIT ?", (limit,)).fetchall()
@@ -1828,6 +1839,18 @@ class WorldMixin:
             last = d["text"]
             out.append(d)
         return out
+
+    async def api_world_events(self, request):
+        self.require_super(request)
+        try:
+            day = int(request.query.get("day_index") or 0)
+        except Exception:
+            day = 0
+        if not day:
+            day = (self.world_state() or {}).get("day_index", 0)
+        return aiohttp_web.json_response({"code": 0, "day_index": day,
+                                          "events": self.world_events_for_day(day),
+                                          "days": self.world_event_days()})
 
     async def api_world_state(self, request):
         self.require_super(request)
@@ -1870,7 +1893,10 @@ class WorldMixin:
         except Exception:
             st["owner_qq"] = self.store.get_setting("world_owner_qq", "")
         st["scale"] = self.store.get_setting("world_scale", "1")
-        return aiohttp_web.json_response({"code": 0, "state": st, "events": self.world_recent_events(40)})
+        return aiohttp_web.json_response({"code": 0, "state": st,
+                                          "events": self.world_events_for_day(st.get("day_index", 0)),
+                                          "days": self.world_event_days(),
+                                          "today": st.get("day_index", 0)})
 
     async def api_world_config(self, request):
         self.require_super(request)
