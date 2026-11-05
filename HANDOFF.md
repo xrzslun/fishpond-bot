@@ -21,7 +21,7 @@
 
 | 项目 | 值 |
 |---|---|
-| 服务器 | `43.132.175.12` |
+| 服务器 | `YOUR_SERVER_IP` |
 | SSH 用户 | `ubuntu`（sudo 可用；root 密码登录已关闭） |
 | 域名 | `https://xrzs.cloud` |
 | 后台地址 | `https://xrzs.cloud/xrzs/bot/QQbot/` |
@@ -371,7 +371,7 @@ python3 -m py_compile deploy/files/bridge/bot.py
 1. `bridge/bot_admin.py`：`APP_VERSION` 保持 **3.5.5**；新增自画像固定模板（见下）
 2. `deploy/make_release.py`：
    - 新增硬性检查：`VIEWER_FEATURE=False`、`MEMORY_FEATURE=True`、`APP_VERSION` 存在、`compile()` 语法预检
-   - 新增禁用内容扫描：`xrzs.cloud/xrzs`、`43.132.175.12`、`/root/`、`sk-xxxx`、48 位 hex Token
+   - 新增禁用内容扫描：`xrzs.cloud/xrzs`、`YOUR_SERVER_IP`、`/root/`、`sk-xxxx`、48 位 hex Token
    - 检查不通过直接 `exit 1`，不再产出带问题的产物
 3. `deploy/pack.sh`：
    - 新增「脏文件检查」：`*.db` / `*.pyc` / `*.bak*` / `*.log` / `config.yaml` / `__pycache__` 一律中止打包
@@ -1790,7 +1790,7 @@ NapCat 重启后快速登录失败，已生成二维码待扫（`/api/qr`）。
   └ NapCat 容器（ACCOUNT=3446248859，只监听 127.0.0.1:3001 / 6099）
   └ autossh 反向隧道 → 香港 127.0.0.1:3011 → 上海 3001；香港 127.0.0.1:6099 → 上海 6099
   └ 2G swap；Docker 镜像加速 docker.xuanyuan.run
-香港 43.132.175.12
+香港 YOUR_SERVER_IP
   └ bot.py / data.db / 后台 / 更新源 / 剧本库（全部不变，无需备案）
   └ config.yaml: ws_url=ws://127.0.0.1:3011, webui_token=b39f9839…
   └ 旧 NapCat 容器已 stop + restart=no（避免同号双登）
@@ -1798,7 +1798,7 @@ NapCat 重启后快速登录失败，已生成二维码待扫（`/api/qr`）。
 
 **隧道服务**（上海）：`/etc/systemd/system/napcat-tunnel.service`
 ```
-autossh -M 0 -N -o ServerAliveInterval=30 -o ExitOnForwardFailure=yes   -R 127.0.0.1:3011:127.0.0.1:3001 -R 127.0.0.1:6099:127.0.0.1:6099   ubuntu@43.132.175.12
+autossh -M 0 -N -o ServerAliveInterval=30 -o ExitOnForwardFailure=yes   -R 127.0.0.1:3011:127.0.0.1:3001 -R 127.0.0.1:6099:127.0.0.1:6099   ubuntu@YOUR_SERVER_IP
 ```
 
 **验证**：发送 retcode 0；status `online=True, uin=3446248859, bridge=True, need_login=False`。
@@ -1812,7 +1812,7 @@ config 改回 `ws://127.0.0.1:3001` + 旧 token `d261001b…`，`systemctl resta
 
 **双节点**：
 - 香港（程序服务器）：`https://xrzs.cloud/host/`（owner / 090b360d57521ca9）——给普通用户托管
-- 上海（124.223.58.58）：`https://xrzs.cloud/shost/`（owner / shb91f60d6ee89）——给你的号托管
+- 上海（YOUR_SERVER_IP_2）：`https://xrzs.cloud/shost/`（owner / shb91f60d6ee89）——给你的号托管
 - 租户入口统一 `https://xrzs.cloud/t/<token>/`；香港主控对未知 token 回退到上海 8092
 
 **每个租户** = 1 个 NapCat 容器（`--memory=900m --cpus=1`，仅 127.0.0.1 端口）

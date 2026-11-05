@@ -6,7 +6,7 @@ V="${1:?用法: publish_update.sh <version> [notes]}"
 NOTES="${2:-}"
 FAT="files/bot_fat.py"
 [ -f "$FAT" ] || { echo "缺少 $FAT，先运行 make_fat.py"; exit 1; }
-REMOTE="${REMOTE:-ubuntu@43.132.175.12}"
+REMOTE="${REMOTE:-ubuntu@YOUR_SERVER_IP}"
 SSH="sshpass -e ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
 SCP="sshpass -e scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
 $SCP "$FAT" "$REMOTE:/tmp/bot_fat_pub.py"

@@ -3,7 +3,7 @@
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")"
 
-REMOTE="${REMOTE:-ubuntu@43.132.175.12}"
+REMOTE="${REMOTE:-ubuntu@YOUR_SERVER_IP}"
 DL_DIR="${DL_DIR:-/var/www/fishpond/dl}"
 PACK_PASS="${PACK_PASS:-F7q2Lm9Xz4Rt}"
 VERSION=$(grep -m1 'APP_VERSION = ' files/bridge/bot.py | sed 's/.*"\([0-9.]*\)".*/\1/')

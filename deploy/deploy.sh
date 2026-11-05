@@ -6,7 +6,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-REMOTE="${REMOTE:-ubuntu@43.132.175.12}"
+REMOTE="${REMOTE:-ubuntu@YOUR_SERVER_IP}"
 LOCAL_FILE="deploy/files/bridge/bot.py"
 REMOTE_FILE="/opt/qqbot/bridge/bot.py"
 FORCE="${1:-}"

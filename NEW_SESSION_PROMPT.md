@@ -9,7 +9,7 @@
 - 源码：/root/Documents/deepseek-harness/default-workspace/qq-deepseek-bot
 - 主文件：bridge/bot_admin.py
 - 发布产物：deploy/files/bridge/bot.py
-- 服务器：ubuntu@43.132.175.12（密码/密钥不在文档里，向用户要或使用已有 SSH 配置）
+- 服务器：ubuntu@YOUR_SERVER_IP（密码/密钥不在文档里，向用户要或使用已有 SSH 配置）
 - 后台：https://xrzs.cloud/xrzs/bot/QQbot/
 - 机器人 QQ：1571154120
 
