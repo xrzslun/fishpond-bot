@@ -49,7 +49,7 @@ else
   echo "  ⚠️  读取版本清单失败，使用内置地址"
 fi
 PKG_URL="${PKG_URL:-$BASE/qqbot-latest.tar.gz.enc}"
-PKG_SHA="${PKG_SHA:-${FISHPOND_FALLBACK_SHA:-a1602f5acddf618322cf2727712d094dd167dea1c96c5602b530cd65995abfa5}}"
+PKG_SHA="${PKG_SHA:-${FISHPOND_FALLBACK_SHA:-45eeeaf6d59cc5b031550947c39927b67133251f93cd5c7ac0465ff2733e04f0}}"
 if [ -z "$PKG_SHA" ]; then
   echo "!! 没有可用的校验值，请加 --sha 参数"; exit 1
 fi
