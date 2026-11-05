@@ -425,6 +425,60 @@ class StickerMixin:
             self.store.set_setting("public_base_url", f"https://{host}")
         return aiohttp_web.json_response({"code": 0})
 
+    @staticmethod
+    def image_phash(data: bytes) -> str:
+        try:
+            import io as _io
+            from PIL import Image
+            im = Image.open(_io.BytesIO(data)).convert("L").resize((8, 8))
+            px = list(im.getdata())
+            avg = sum(px) / len(px)
+            bits = "".join("1" if p > avg else "0" for p in px)
+            return f"{int(bits, 2):016x}"
+        except Exception:
+            return ""
+
+    @staticmethod
+    def _phash_dist(a: str, b: str) -> int:
+        try:
+            return bin(int(a, 16) ^ int(b, 16)).count("1")
+        except Exception:
+            return 99
+
+    def _ensure_phash_col(self):
+        try:
+            with self.store._conn() as c:
+                c.execute("ALTER TABLE stickers ADD COLUMN phash TEXT")
+        except Exception:
+            pass
+
+    def sticker_duplicate(self, data: bytes, desc: str = "") -> bool:
+        self._ensure_phash_col()
+        ph = self.image_phash(data)
+        try:
+            with self.store._conn() as c:
+                rows = [dict(r) for r in c.execute("SELECT filename,phash,description FROM stickers")]
+                for r in rows:
+                    p2 = r.get("phash") or ""
+                    if not p2:
+                        f = STICKER_DIR / r["filename"]
+                        if f.is_file():
+                            try:
+                                p2 = self.image_phash(f.read_bytes())
+                                if p2:
+                                    c.execute("UPDATE stickers SET phash=? WHERE filename=?", (p2, r["filename"]))
+                            except Exception:
+                                p2 = ""
+                    if ph and p2 and self._phash_dist(ph, p2) <= 5:
+                        return True
+                    d1 = re.sub(r"[^\w\u4e00-\u9fff]", "", str(desc or ""))
+                    d2 = re.sub(r"[^\w\u4e00-\u9fff]", "", str(r.get("description") or ""))
+                    if d1 and d2 and (d1 == d2 or (len(d1) >= 3 and (d1 in d2 or d2 in d1))):
+                        return True
+        except Exception:
+            pass
+        return False
+
     async def _zhipu_describe(self, data: bytes) -> str:
         key = (self.store.get_setting("image_api_key_zhipu", "") or "").strip()
         if not key:
@@ -512,7 +566,7 @@ class StickerMixin:
                 return out
         return ""
 
-    async def save_sticker_from_url(self, url: str, source: str = "qq", context: str = ""):
+    async def save_sticker_from_url(self, url: str, source: str = "qq", context: str = "", dedupe: bool = False):
         if not str(url or "").startswith(("http://", "https://")):
             return None, ""
         if not await self.is_public_url(url):
@@ -526,6 +580,8 @@ class StickerMixin:
         except Exception:
             return None, ""
         if not blob or len(blob) > 5 * 1024 * 1024:
+            return None, ""
+        if dedupe and self.sticker_duplicate(blob, context):
             return None, ""
         ext = ".png"
         for e in (".png", ".jpg", ".jpeg", ".gif", ".webp"):
@@ -643,6 +699,9 @@ class StickerMixin:
             return None
         if not data.get("collect"):
             return None
+        if self.sticker_duplicate(blob, str(data.get("desc") or desc)):
+            log.info("自动收录跳过去重: %s", str(data.get("desc") or desc)[:30])
+            return None
         newdesc = str(data.get("desc") or desc)[:60]
         if any(newdesc and (newdesc in d or d in newdesc) for d in existing):
             return None
@@ -666,7 +725,7 @@ class StickerMixin:
             return None
         for u in urls[:2]:
             try:
-                name, desc = await self.save_sticker_from_url(u, "qq", "")
+                name, desc = await self.save_sticker_from_url(u, "qq", "", dedupe=True)
                 if name:
                     log.info("AI 自动收录表情: %s %s", name, (desc or "")[:30])
                     return name
