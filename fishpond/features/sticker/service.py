@@ -453,47 +453,64 @@ class StickerMixin:
             log.warning("智谱识图异常: %s", e)
             return ""
 
+    async def _provider_vision_desc(self, provider: dict, data: bytes) -> str:
+        key = (provider.get("api_key") or "").strip()
+        base = (provider.get("base_url") or "").rstrip("/")
+        model = (provider.get("model") or "").strip()
+        if not key or not base or not model:
+            return ""
+        prompt = ("这是一张聊天表情包。用一句简短中文描述它的情绪/用途（如：无语、嘲笑、点赞、委屈、狗头），"
+                  "并原样列出图片里出现的文字。格式：含义：xxx；文字：xxx（没有文字就写无）")
+        try:
+            img = self.encode_image(data)
+            async with self.http.post(f"{base}/chat/completions", json={
+                "model": model,
+                "messages": [{"role": "user", "content": [
+                    {"type": "text", "text": prompt},
+                    {"type": "image_url", "image_url": {"url": img}},
+                ]}],
+                "temperature": 0.3, "max_tokens": 120,
+            }, headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+               timeout=aiohttp.ClientTimeout(total=45)) as resp:
+                j = await resp.json(content_type=None)
+            if resp.status != 200:
+                log.info("识图失败 %s: %s", model, str(j)[:100])
+                return ""
+            out = ((j.get("choices") or [{}])[0].get("message", {}).get("content", "") or "").strip()
+            if out:
+                self._vision_ok_model = model
+            return out
+        except Exception as e:
+            log.info("识图异常 %s: %s", model, str(e)[:80])
+            return ""
+
     async def describe_sticker(self, data: bytes) -> str:
+        cands = []
+        try:
+            cands.append(self.current_provider() or {})
+        except Exception:
+            pass
+        try:
+            for p in self.store.providers():
+                m = str(p.get("model") or "").lower()
+                if any(k in m for k in ("flash", "vl", "vision", "v4")):
+                    cands.append(p)
+        except Exception:
+            pass
+        seen = set()
+        for p in cands:
+            sig = (p.get("base_url"), p.get("model"))
+            if sig in seen:
+                continue
+            seen.add(sig)
+            out = await self._provider_vision_desc(p, data)
+            if out:
+                return out
         if self.store.get_setting("image_api_key_zhipu", ""):
             out = await self._zhipu_describe(data)
             if out:
                 return out
-        provider = self.current_provider() or {}
-        if not provider.get("api_key"):
-            return ""
-        if not self.vision_enabled:
-            return ""
-        img = self.encode_image(data)
-        prompt = ("这是一张聊天表情包。用一句简短中文描述它的情绪/用途（如：无语、嘲笑、点赞、委屈、狗头），"
-                  "并原样列出图片里出现的文字。格式：含义：xxx；文字：xxx（没有文字就写无）")
-        payload = {
-            "model": provider.get("model") or self.model,
-            "messages": [{"role": "user", "content": [
-                {"type": "text", "text": prompt},
-                {"type": "image_url", "image_url": {"url": img}},
-            ]}],
-            "temperature": 0.3,
-            "max_tokens": 120,
-        }
-        try:
-            # 这里原来直接用了未定义的 timeout，NameError 被下面的 except 吞掉，
-            # 导致表情包描述永远返回空字符串（smart 选表情退化）。补上定义。
-            timeout = self.timeout or 60
-            async with self.http.post(
-                f"{provider['base_url']}/chat/completions",
-                json=payload,
-                headers={"Authorization": f"Bearer {provider['api_key']}", "Content-Type": "application/json"},
-                timeout=aiohttp.ClientTimeout(total=timeout),
-            ) as resp:
-                dataj = await resp.json(content_type=None)
-                self.record_usage(dataj.get("usage"), "sticker")
-            if resp.status != 200:
-                return ""
-            out = ((dataj.get("choices") or [{}])[0].get("message", {}).get("content", "") or "").strip()
-            out = re.sub(r"\s+", " ", out)
-            return out[:60]
-        except Exception:
-            return ""
+        return ""
 
     async def save_sticker_from_url(self, url: str, source: str = "qq", context: str = ""):
         if not str(url or "").startswith(("http://", "https://")):
