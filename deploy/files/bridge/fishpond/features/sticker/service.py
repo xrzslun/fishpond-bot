@@ -185,6 +185,8 @@ class StickerMixin:
                           "description": desc_map.get(n, "")} for n in names],
             "probability": int(self.store.get_setting("sticker_probability", "0") or 0),
             "daily_limit": int(self.store.get_setting("sticker_daily_limit", "12") or 12),
+            "auto_collect": self.store.get_setting("sticker_auto_collect", "0"),
+            "auto_daily": int(self.store.get_setting("sticker_auto_collect_daily", "3") or 3),
             "mode": self.store.get_setting("sticker_mode", "smart"),
             "base": (self.store.get_setting("public_base_url", "") or ""),
         })
@@ -404,6 +406,13 @@ class StickerMixin:
             except (TypeError, ValueError):
                 return aiohttp_web.json_response({"code": -1, "message": "概率需为 0-100 的整数"})
             self.store.set_setting("sticker_probability", str(prob))
+        if "auto_collect" in data:
+            self.store.set_setting("sticker_auto_collect", "1" if data.get("auto_collect") else "0")
+        if "auto_daily" in data:
+            try:
+                self.store.set_setting("sticker_auto_collect_daily", str(max(0, min(20, int(data.get("auto_daily") or 0)))))
+            except Exception:
+                pass
         if "daily_limit" in data:
             try:
                 self.store.set_setting("sticker_daily_limit", str(max(0, min(100, int(data.get("daily_limit") or 0)))))
@@ -416,7 +425,39 @@ class StickerMixin:
             self.store.set_setting("public_base_url", f"https://{host}")
         return aiohttp_web.json_response({"code": 0})
 
+    async def _zhipu_describe(self, data: bytes) -> str:
+        key = (self.store.get_setting("image_api_key_zhipu", "") or "").strip()
+        if not key:
+            return ""
+        base = (self.store.get_setting("image_zhipu_base", "https://open.bigmodel.cn/api/paas/v4") or "").rstrip("/")
+        model = (self.store.get_setting("image_vision_model", "glm-4v-flash") or "glm-4v-flash").strip()
+        prompt = ("这是一张聊天表情包。用一句简短中文描述它的情绪/用途（如：无语、嘲笑、点赞、委屈、狗头），"
+                  "并原样列出图片里出现的文字。格式：含义：xxx；文字：xxx（没有文字就写无）")
+        try:
+            img = self.encode_image(data)
+            async with self.http.post(f"{base}/chat/completions", json={
+                "model": model,
+                "messages": [{"role": "user", "content": [
+                    {"type": "text", "text": prompt},
+                    {"type": "image_url", "image_url": {"url": img}},
+                ]}],
+                "temperature": 0.3, "max_tokens": 120,
+            }, headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+               timeout=aiohttp.ClientTimeout(total=45)) as resp:
+                j = await resp.json(content_type=None)
+            if resp.status != 200:
+                log.warning("智谱识图失败: %s", str(j)[:120])
+                return ""
+            return ((j.get("choices") or [{}])[0].get("message", {}).get("content", "") or "").strip()
+        except Exception as e:
+            log.warning("智谱识图异常: %s", e)
+            return ""
+
     async def describe_sticker(self, data: bytes) -> str:
+        if self.store.get_setting("image_api_key_zhipu", ""):
+            out = await self._zhipu_describe(data)
+            if out:
+                return out
         provider = self.current_provider() or {}
         if not provider.get("api_key"):
             return ""
@@ -530,6 +571,75 @@ class StickerMixin:
             if d and (d == ans or ans in d or d in ans):
                 return r["filename"]
         return None
+
+    async def auto_collect_sticker(self, url: str, context: str = ""):
+        """按人设判断是否收录对方发的表情，不合适的直接跳过。"""
+        if self.store.get_setting("sticker_auto_collect", "0") != "1":
+            return None
+        if not str(url or "").startswith(("http://", "https://")):
+            return None
+        day = time.strftime("%Y-%m-%d")
+        if self.store.get_setting("sticker_auto_day", "") != day:
+            self.store.set_setting("sticker_auto_day", day)
+            self.store.set_setting("sticker_auto_count", "0")
+        try:
+            cap = max(0, int(self.store.get_setting("sticker_auto_collect_daily", "3") or 3))
+            used = int(self.store.get_setting("sticker_auto_count", "0") or 0)
+        except Exception:
+            cap, used = 3, 0
+        if cap <= 0 or used >= cap:
+            return None
+        try:
+            async with self.http.get(url, timeout=aiohttp.ClientTimeout(total=20)) as resp:
+                if resp.status != 200:
+                    return None
+                blob = await resp.read()
+                ctype = (resp.headers.get("Content-Type") or "").lower()
+        except Exception:
+            return None
+        if not blob or len(blob) > 5 * 1024 * 1024:
+            return None
+        desc = await self.describe_sticker(blob)
+        if not desc:
+            return None
+        rows = self.store.sticker_descriptions()
+        existing = [str(r.get("description") or "").strip() for r in rows if r.get("description")]
+        try:
+            persona = (self.persona_text() or "")[:600]
+        except Exception:
+            persona = ""
+        prompt = (
+            "你在帮一个聊天角色挑表情包。判断这张表情是否值得收进它的表情库。\n"
+            "只收：符合角色人设、日常聊天能用、和已有表情不重复的。\n"
+            "不收：真人照片、截图、广告、低俗、血腥、政治、文字过多、和已有含义重复的。\n"
+            "只输出 JSON：{\"collect\":true或false,\"desc\":\"2-6字含义\",\"reason\":\"简短原因\"}\n"
+            f"角色人设：{persona}\n候选表情：{desc}\n已有表情说明：{'、'.join(existing[-60:]) or '无'}"
+        )
+        try:
+            import json as _json
+            raw = await self.llm_complete("你是严格的表情库管理员，只输出 JSON。", prompt,
+                                          max_tokens=120, temperature=0.2, timeout=30)
+            m = re.search(r"\{.*\}", str(raw or ""), re.S)
+            data = _json.loads(m.group(0)) if m else {}
+        except Exception as e:
+            log.warning("自动收录判断失败: %s", e)
+            return None
+        if not data.get("collect"):
+            return None
+        newdesc = str(data.get("desc") or desc)[:60]
+        if any(newdesc and (newdesc in d or d in newdesc) for d in existing):
+            return None
+        ext = ".gif" if "gif" in ctype else (".webp" if "webp" in ctype else ".png")
+        name = secrets.token_hex(8) + ext
+        try:
+            (STICKER_DIR / name).write_bytes(blob)
+        except Exception:
+            return None
+        self.store.add_sticker(name)
+        self.store.set_sticker_description(name, newdesc)
+        self.store.set_setting("sticker_auto_count", str(used + 1))
+        log.info("AI 自动收录表情: %s (%s) %s", name, newdesc, str(data.get("reason") or "")[:40])
+        return name
 
     async def auto_save_sticker_images(self, urls: list, reply: str):
         """AI 说“存了”时真正落库，失败返回 None。"""

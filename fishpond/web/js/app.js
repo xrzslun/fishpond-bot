@@ -1535,6 +1535,12 @@ async function loadSuper(){
   setRoastModeUI(r.roast_mode || 'fast');
   el('balwords').value = r.balance_keywords || '';
   el('capwords').value = r.sticker_capture_keywords || '';
+  fetch(B+'/api/stickers').then(x=>x.json()).then(sr=>{
+    if(sr.code!==0) return;
+    const ab=el('stkauto');
+    if(ab){ ab.textContent='AI自动收录：'+(String(sr.auto_collect)==='1'?'已开启':'已关闭'); ab.style.background=String(sr.auto_collect)==='1'?'#16a34a':'#4b5563'; }
+    if(el('stkautoday')) el('stkautoday').value=sr.auto_daily||3;
+  }).catch(function(){});
   const cb = el('capbtn');
   if(cb){
     cb.textContent = r.sticker_capture ? '收录：已开启' : '收录：已关闭';
@@ -1574,6 +1580,17 @@ async function saveRoastLevel(){
   try{
     await fetch(B + '/api/super/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({roast_level: lv})});
   }catch(e){}
+}
+async function toggleStickerAuto(){
+  const r=await fetch(B+'/api/stickers').then(x=>x.json());
+  const on=String(r.auto_collect)==='1';
+  await fetch(B+'/api/stickers/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({auto_collect:!on})});
+  loadSuper();
+}
+async function saveStickerAutoDaily(){
+  const n=parseInt(el('stkautoday').value||'3');
+  const r=await fetch(B+'/api/stickers/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({auto_daily:n})}).then(x=>x.json());
+  el('stkmsg').textContent=r.code===0?'已保存，每天最多 '+n+' 张':(r.message||'保存失败');
 }
 async function saveCaptureWords(){
   const r = await fetch(B + '/api/super/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sticker_capture_keywords: el('capwords').value})}).then(r=>r.json());

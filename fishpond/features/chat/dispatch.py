@@ -1020,6 +1020,11 @@ class ChatMixin:
         user_text = seg["user_text"]
         at_me, at_others, at_target = seg["at_me"], seg["at_others"], seg["at_target"]
         image_urls, stickers = seg["image_urls"], seg["stickers"]
+        try:
+            if image_urls and (mtype == "private" or at_me) and hasattr(self, "auto_collect_sticker"):
+                self.spawn(self.auto_collect_sticker(image_urls[0], user_text), "auto_sticker")
+        except Exception:
+            pass
         records, reply_ids = seg["records"], seg["reply_ids"]
         self.remember_recent(user_id, user_text)
         try:

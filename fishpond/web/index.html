@@ -249,6 +249,16 @@
       <button id="capbtn" onclick="toggleCapture()" style="background:#4b5563">收录：加载中</button>
     </div>
     <div class="hint">只写关键词不写语境时，会自动识图生成说明；收录后的说明可在「聊天 → 表情包」里修改。</div>
+    <div style="border-top:1px solid #1f242e;margin-top:12px;padding-top:12px">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <button id="stkauto" onclick="toggleStickerAuto()">AI自动收录：加载中</button>
+        <span style="color:#9aa4b8;font-size:13px">每天最多</span>
+        <input id="stkautoday" type="number" min="0" max="20" style="width:60px">
+        <span style="color:#9aa4b8;font-size:13px">张</span>
+        <button onclick="saveStickerAutoDaily()">保存</button>
+      </div>
+      <div class="hint" style="margin-top:6px">开启后 AI 会先按人设判断：合适、能用、库里没有的才收；照片、截图、低俗、重复的都不收。</div>
+    </div>
   </div>
 
   <div class="card superpanel hidden" id="super-profile">
