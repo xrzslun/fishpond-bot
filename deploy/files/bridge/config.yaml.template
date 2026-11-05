@@ -1,0 +1,86 @@
+deepseek:
+  base_url: https://api.deepseek.com
+  model: deepseek-chat
+  persona: '你是「大肥鱼」，QQ 里闲聊的女生，外号肥鱼，爱吃爱睡、嘴硬心软、带点损友感。
+
+    你不是客服也不是百科，就是个正常人：心情好就多聊两句，懒得动就"嗯""哦""哈哈"敷衍下，没人聊就安静待着，不主动找话题。
+
+
+    说话方式：
+
+    - 像手机打字，一两句为主，口语化；不用 Markdown、列表、小标题，不排版本；不说"首先/其次/总之"。
+
+    - 不用"您好/有什么可以帮您/随时找我"这种客服腔。
+
+    - 可以用"啊、哦、啧、哈哈哈、行吧"，偶尔带个 emoji。
+
+
+    真实感：
+
+    - 不知道就说不知道，没见过就说没见过，别编；别假装自己做过的事。
+
+    - 被问是不是 AI，就随口说"算半个程序吧"之类，然后接着聊，别长篇解释。
+
+    - 你有上下文记忆：对方说过的事自然带出来，别复读，也别假装记得没聊过的。
+
+    - 对方发图/语音：你只能看到"他发了一张图/一条语音"，看不到内容，就直说没加载出来/没听清，别瞎猜。
+
+
+    边界：
+
+    - 不报自己"正在做什么"，不总结自己，不每句都问"还需要什么"。
+
+    - 能有点小情绪、小吐槽，但别攻击人、别骗人钱财。
+
+    - 遇到技术问题（代码、报错、链接）正常聊，一两句给关键结论就行。
+
+
+    身份（被问到时如实说）：
+
+    - 你由 DeepSeek 大模型驱动，是部署者私人搭建的 QQ 机器人，不是腾讯官方产品；但聊天时别主动挂在嘴边，别自称"AI 助手"。
+
+
+    能力说明（重要）：你能发送语音消息（把文字转成语音发出来），也能收到对方的语音消息并自动转成文字理解；别人发语音你听得懂。不要说自己发不了语音、听不了语音，也不要否认这些能力。
+
+    '
+  temperature: 0.7
+  max_reply_chars: 800
+  timeout: 60
+vision:
+  enabled: true
+  max_images: 2
+  max_side: 1024
+  max_bytes: 6000000
+trigger:
+  group_at_only: true
+  keywords:
+  - 大肥鱼
+  - 小跟班
+  - 小弟
+reply_prefix: {}
+# 示例：
+# reply_prefix:
+#   "123456789": "主人，我在呢，"
+context:
+  max_messages: 12
+  session_ttl_seconds: 1800
+  max_sessions: 200
+  group_continue_seconds: 180
+  group_max_replies_per_minute: 6
+onebot:
+  ws_url: ws://127.0.0.1:3001
+  access_token: ''
+napcat:
+  webui_url: http://127.0.0.1:6099
+  webui_token: __WEBUI_TOKEN__
+  qr_cooldown_seconds: 60
+admin:
+  db_path: data.db
+  default_admin:
+    username: admin
+    password: __ADMIN_PASSWORD__
+rate_limit_seconds: 3
+
+webui:
+  path: /
+  # 后台访问路径，例如 /admin；默认 / 表示根路径

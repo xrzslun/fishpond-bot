@@ -1,0 +1,9 @@
+{
+  "version": "3.14.1",
+  "date": "2026-11-03 04:11",
+  "notes": "3.14.1 更新：①「下载诊断包」按钮移到状态页「先看这里」，新手一眼能找到；②帮助文案里的联系方式统一改为 QQ：2844642318；③其余功能不变。",
+  "url": "https://xrzs.cloud/updates/bot.py",
+  "sha256": "2594cc07a99f24498eb13a1d928e02aa450660162a5b22615bcc2dc7e0ec47ac",
+  "min_version": "",
+  "type": "file"
+}

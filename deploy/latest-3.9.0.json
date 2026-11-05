@@ -1,0 +1,8 @@
+{
+  "version": "3.9.0",
+  "date": "2026-10-31 14:14",
+  "notes": "3.9.0 更新：①语音新增 Breeze Blue（breeze-tts-2）引擎，后台「合成方式」改成三个按钮切换，Breeze 不走裁剪、开头补 120ms 保护、结尾补 1.2s 静音并淡出，收尾更完整。②怼人支持语音：开启 TTS 后怼人会直接发语音，失败自动回退文字。③修复：更新源 sha 与 latest.json 不一致导致「校验失败」，语音 Key 与引擎串用的老问题。",
+  "url": "https://xrzs.cloud/updates/bot.py",
+  "sha256": "2484f74070a120dfe768c7159e37cfbac21c7134fc5be5ad960c30c4b4fff14f",
+  "min_version": ""
+}

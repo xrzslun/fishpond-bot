@@ -1,0 +1,8 @@
+{
+  "version": "3.6.8",
+  "date": "2026-10-30 17:05",
+  "notes": "3.6.8 更新：修复「语音页填了智谱 Key、试听却提示未配置 Key」——逐字朗读（GLM-TTS）之前只认生图 Key 和旧语音字段，没有读语音页保存的那把；现在统一按「语音专用 Key → 旧字段 → 生图 Key」取值，填哪一处都能用。",
+  "url": "https://xrzs.cloud/updates/bot.py",
+  "sha256": "a3916136b0e098ceb03c5de3c83772c59b29118f7a5b3f9e64dfc9113ebd9eca",
+  "min_version": ""
+}

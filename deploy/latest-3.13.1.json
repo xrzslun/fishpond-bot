@@ -1,0 +1,9 @@
+{
+  "version": "3.13.1",
+  "date": "2026-11-03 04:05",
+  "notes": "3.13.1 更新：①加固 cryptography 自动安装——缺依赖时自动装到运行环境，pip 不可用会先 ensurepip 再试；②自动安装失败时保留明文配置并打印手动安装命令，不影响启动；③其余功能与 3.13.0 一致。",
+  "url": "https://xrzs.cloud/updates/bot.py",
+  "sha256": "9340ea4b2a84028a46f89ae79503bca712940a555fdad4dc762625ac6ad3a08d",
+  "min_version": "",
+  "type": "file"
+}

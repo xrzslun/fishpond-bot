@@ -1,0 +1,15 @@
+[Unit]
+Description=QQ DeepSeek Bridge (OneBot -> DeepSeek)
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+User=__RUN_USER__
+WorkingDirectory=__DIR__/bridge
+EnvironmentFile=__DIR__/bridge/.env
+ExecStart=__DIR__/bridge/venv/bin/python __DIR__/bridge/bot.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

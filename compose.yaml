@@ -1,0 +1,45 @@
+# DeepSeek QQ 机器人 一体化部署文件
+# 架构：NapCat（QQ 个人号协议端，OneBot WS 服务） + LangBot（大模型机器人平台，接 DeepSeek API）
+#
+# 使用方法：
+#   1. 把下面 WEBUI_TOKEN 换成你自己的随机口令（生成：openssl rand -hex 24）
+#   2. docker compose up -d
+#   3. 用 SSH 隧道打开 NapCat WebUI 扫码登录 QQ：ssh -L 6099:127.0.0.1:6099 user@你的服务器
+#      浏览器访问 http://127.0.0.1:6099/webui?token=<WEBUI_TOKEN>
+#   4. 打开 LangBot 控制台（SSH 隧道 5300 端口）配置 DeepSeek 和 OneBot，详见部署指南.md
+#
+# 国内服务器拉取镜像慢时，把镜像名改成镜像站前缀：
+#   mlikiowa/napcat-docker:latest        -> docker.xuanyuan.run/mlikiowa/napcat-docker:latest
+#   rockchin/langbot:latest              -> docker.xuanyuan.run/rockchin/langbot:latest
+
+services:
+  napcat:
+    image: mlikiowa/napcat-docker:latest
+    container_name: napcat
+    restart: unless-stopped
+    environment:
+      # MODE=ws：启用正向 WebSocket（OneBot 服务端，监听容器内 3001 端口）
+      MODE: ws
+      # NapCat WebUI 登录口令，务必改成你自己的强随机值
+      WEBUI_TOKEN: change-me-please
+      TZ: Asia/Shanghai
+    ports:
+      # 只绑定本机回环地址，不暴露公网；远程用 SSH 隧道访问（见部署指南）
+      - "127.0.0.1:6099:6099"   # NapCat WebUI
+      - "127.0.0.1:3001:3001"   # OneBot WebSocket（LangBot 在同网络内直连，无需此映射也通）
+    volumes:
+      - ./data/napcat/qq:/app/.config/QQ        # QQ 登录态与缓存（丢了要重新扫码）
+      - ./data/napcat/config:/app/napcat/config # NapCat 配置
+      - ./data/napcat/plugins:/app/napcat/plugins
+
+  langbot:
+    image: rockchin/langbot:latest
+    container_name: langbot
+    restart: on-failure
+    environment:
+      - TZ=Asia/Shanghai
+    ports:
+      # 只绑定本机回环地址；远程用 SSH 隧道访问（见部署指南）
+      - "127.0.0.1:5300:5300"   # LangBot Web 控制台
+    volumes:
+      - ./data/langbot:/app/data   # LangBot 全部数据（配置、预设、日志）

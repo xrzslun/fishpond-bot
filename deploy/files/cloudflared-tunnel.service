@@ -1,0 +1,13 @@
+[Unit]
+Description=Cloudflare Quick Tunnel (QQ Bot admin)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=__RUN_USER__
+ExecStart=/usr/local/bin/cloudflared tunnel --no-autoupdate --url http://127.0.0.1:8099
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

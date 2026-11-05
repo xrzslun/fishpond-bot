@@ -1,0 +1,44 @@
+# 运行数据与密钥
+data.db
+data.db-*
+*.sqlite
+*.sqlite3
+config.yaml
+.env
+.env.*
+*.pem
+*.p12
+*.key
+tunnel_url
+qq-login-qr.png
+
+# 备份与快照
+.backups/
+backups/
+snapshots/
+*.bak
+*.bak.*
+*.broken.*
+
+# 缓存
+__pycache__/
+*.pyc
+.pytest_cache/
+.preview/
+
+# 日志与临时文件
+*.log
+*.tmp
+*.new
+.DS_Store
+
+# 发布产物（可重新生成）
+deploy/qqbot-deploy.tar.gz
+deploy/qqbot-deploy.tar.gz.enc
+deploy/files/bot_fat.py
+deploy/files/bridge/updates/
+
+# 历史备份
+*.bak*
+*.broken*
+bridge/config.yaml.bak*

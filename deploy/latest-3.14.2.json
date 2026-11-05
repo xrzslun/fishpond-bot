@@ -1,0 +1,9 @@
+{
+  "version": "3.14.2",
+  "date": "2026-11-03 04:16",
+  "notes": "3.14.2 更新：①「一键体检」后才会显示后续按钮；②只有体检发现问题时才显示「下载诊断包」；③「遇到问题怎么办」在体检后始终显示；④去掉多余提示文案。",
+  "url": "https://xrzs.cloud/updates/bot.py",
+  "sha256": "aec8c64fb22be5f51694e96abbc89f4da93f00924c3352e3e20e1bc6533c84d7",
+  "min_version": "",
+  "type": "file"
+}

@@ -1,0 +1,1544 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FishPond 管理</title>
+<link rel="stylesheet" href="__BASE__/web/css/app.css"></head>
+<body><div id="pbar"></div>
+<div id="forcebar" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9998;background:#7f1d1d;color:#fff;padding:8px 12px;font-size:13px;text-align:center">
+  <span id="forcebartext">当前版本过低，必须更新</span>
+  <button onclick="applyUpdate()" style="margin-left:10px;background:#dc2626;padding:4px 10px">立即更新</button>
+</div>
+<div id="offlinebar" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9997;background:#9a3412;color:#fff;padding:8px 12px;font-size:13px;text-align:center">
+  <span id="offlinebartext">机器人 QQ 已离线</span>
+</div>
+<button id="forcefloat" onclick="applyUpdate()" style="display:none;position:fixed;right:16px;bottom:20px;z-index:9998;background:#dc2626;box-shadow:0 6px 20px rgba(0,0,0,.4);padding:10px 14px">强制更新</button>
+<div class="topbar">
+  <h1>FishPond</h1>
+  <div class="swipe-hint" id="swipehint">← 左右滑动标签</div>
+</div>
+<div class="tabs" id="tabs">
+  <div class="tab on" data-g="status">状态</div>
+  <div class="tab" data-g="bot">机器人 <span id="updot" style="display:none;color:#f87171">●</span></div>
+  <div class="tab" data-g="chat">聊天</div>
+  <div class="tab" data-g="acct">账号</div>
+  <div class="tab" data-g="logout">退出</div>
+</div>
+<div class="tabs" id="subtabs" style="margin-top:14px"></div>
+<main id="main">
+
+<div id="accounts" class="hidden">
+  <div class="card">
+    <h2 style="font-size:14px;color:#8b93a5;margin:0 0 8px">账号管理</h2>
+    <div class="hint" id="acchint"></div>
+    <div id="acclist"></div>
+  </div>
+  <div class="card">
+    <h2 style="font-size:14px;color:#8b93a5;margin:0 0 8px">新建账号</h2>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0;align-items:center">
+      <input id="accname" placeholder="用户名" style="width:130px">
+      <input id="accpass" type="password" placeholder="密码（≥6位）" style="width:150px">
+      <select id="accrole" style="background:#0b0d11;color:#e6e6e6;border:1px solid #2a2f3a;border-radius:8px;padding:9px">
+        <option value="user">用户</option>
+        <option value="admin">管理员</option>
+        <option value="super">超级管理员</option>
+      </select>
+      <input id="accqg" type="number" min="0" placeholder="可加群上限（空=不限）" style="width:170px">
+      <input id="accqu" type="number" min="0" placeholder="可加QQ上限（空=不限）" style="width:170px">
+      <button onclick="createAccount()">创建账号</button>
+    </div>
+    <div class="msg" id="accmsg"></div>
+  </div>
+</div>
+
+<div id="logins" class="hidden">
+  <div class="card">
+    <h2 style="font-size:14px;color:#8b93a5;margin:0 0 8px">登录日志</h2>
+    <div class="hint">保留最近 30 天；超级管理员看全部，管理员看自己+下属，用户看自己。</div>
+    <div id="loginloglist" style="margin-top:10px"></div>
+  </div>
+</div>
+
+<div id="tokens" class="hidden">
+  <div class="card" style="padding:8px 12px">
+    <div id="tokranges" style="display:flex;gap:8px;flex-wrap:wrap">
+      <div class="tab on" onclick="tokRange('today',this)">今天</div>
+      <div class="tab" onclick="tokRange('yesterday',this)">昨天</div>
+      <div class="tab" onclick="tokRange('3d',this)">前三天</div>
+      <div class="tab" onclick="tokRange('7d',this)">前七天</div>
+      <div class="tab" onclick="tokRange('30d',this)">前一个月</div>
+      <div class="tab" onclick="tokRange('all',this)">全部</div>
+    </div>
+  </div>
+  <div class="card">
+    <h2 style="font-size:14px;color:#8b93a5;margin:0 0 8px">用量统计 · <span id="toklabel">今天</span></h2>
+    <div class="hint" id="tokspan" style="margin-bottom:8px"></div>
+    <div id="toksum" class="hint">加载中…</div>
+  </div>
+  <div class="card">
+    <h2 style="font-size:14px;color:#8b93a5;margin:0 0 8px">按天</h2>
+    <div id="tokdays" class="hint">加载中…</div>
+  </div>
+  <div class="card">
+    <h2 style="font-size:14px;color:#8b93a5;margin:0 0 8px">按类型</h2>
+    <div id="tokkinds" class="hint">加载中…</div>
+  </div>
+  <div class="card">
+    <h2 style="font-size:14px;color:#8b93a5;margin:0 0 8px">最近调用</h2>
+    <div class="hint" style="margin-bottom:6px">每次调用模型都记一行，最多显示 60 条。</div>
+    <div id="tokrecent" class="hint">加载中…</div>
+  </div>
+</div>
+
+<div id="selfcheck" class="hidden">
+  <div class="card">
+    <h2 style="font-size:14px;color:#8b93a5;margin:0 0 8px">测试模式</h2>
+    <div class="hint">开启后，机器人本来要发到群/别人的消息，全部改发给超管（表情包也一样），
+      避免测试时打扰真实用户。转发内容前面会带「[测试转发·群xxx]」。</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:10px 0">
+      <button id="tm_btn" onclick="toggleTestMode()">测试模式：已关闭</button>
+      <input id="tm_qq" placeholder="转发目标 QQ（空=第一个超管）" style="width:220px">
+      <button onclick="saveTestMode()">保存</button>
+      <span class="hint" id="tm_msg"></span>
+    </div>
+    <div class="hint" id="tm_target"></div>
+  </div>
+  <div class="card">
+    <h2 style="font-size:14px;color:#8b93a5;margin:0 0 8px">一键接口自检</h2>
+    <div class="hint">只跑不会改数据、不花钱、不打扰人的接口；红色行就是有问题的。测完点「复制报告」发给开发者，能直接定位。</div>
+    <div style="display:flex;gap:10px;align-items:center;margin:10px 0;flex-wrap:wrap">
+      <button onclick="runSelfCheck()" id="sc_btn">开始自检</button>
+      <button onclick="copySelfCheckReport()" id="sc_copy" style="display:none">复制报告</button>
+      <span class="hint" id="sc_sum"></span>
+    </div>
+    <div id="sc_result" class="hint">点上面按钮开始。</div>
+  </div>
+  <div class="card">
+    <h2 style="font-size:14px;color:#8b93a5;margin:0 0 8px">功能块自检</h2>
+    <div class="hint">逐项验证真实功能链路：数据库、记忆、白名单、关键词、消息解析、表情包、剧本、群管理、模型连通、OneBot 通信。
+      每项自带清理，不会留下测试数据；「模型连通」会花约 20 token。</div>
+    <div style="display:flex;gap:10px;align-items:center;margin:10px 0;flex-wrap:wrap">
+      <button onclick="runFeatureCheck()" id="fc_btn">开始功能自检</button>
+      <span class="hint" id="fc_sum"></span>
+    </div>
+    <div id="fc_result" class="hint">点上面按钮开始。</div>
+  </div>
+</div>
+
+<div id="status">
+  <div class="card" id="novice-card">
+    <h2 style="font-size:16px;margin:0 0 6px">先看这里 👋</h2>
+    <div class="hint">下面三件事都正常，机器人就能聊天了。点一下帮我检查：</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin:12px 0">
+      <button onclick="noviceCheck()" style="background:#2563eb">一键体检</button>
+      <button id="novice-diag" onclick="diagPackGuarded()" style="display:none">下载诊断包</button>
+      <button id="novice-help" onclick="noviceHelp()" style="display:none">遇到问题怎么办</button>
+    </div>
+    <div id="novice-pills" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px"></div>
+    <pre id="novice-out" style="white-space:pre-wrap;font-size:13px;color:#9aa4b8;margin:0;max-height:200px;overflow:auto"></pre>
+  </div>
+  <div class="card" id="stat-card"><div class="hint">加载中…</div></div>
+  <div class="card">
+    <h2 style="font-size:14px;color:#8b93a5;margin:0 0 8px">好友申请</h2>
+    <div class="hint" id="friendbrief">加载中…</div>
+    <div id="friendrecent" style="margin-top:8px"></div>
+  </div>
+  <div class="card"><h2 style="font-size:14px;color:#8b93a5;margin:0 0 8px">最近日志</h2><pre id="logbox"></pre></div>
+</div>
+
+<div id="super" class="hidden">
+  <div class="card" style="padding:8px 12px">
+    <div id="supertabs" style="display:flex;gap:8px;flex-wrap:wrap">
+      <div class="tab on" onclick="superTab('basic', this)">基本设置</div>
+      <div class="tab" onclick="superTab('capture', this)">表情收录</div>
+      <div class="tab" onclick="superTab('profile', this)">机器人资料</div>
+      <div class="tab" onclick="superTab('friend', this)">好友申请</div>
+      <div class="tab" onclick="superTab('black', this)">黑名单</div>
+      <div class="tab" onclick="superTab('recall', this)">撤回</div>
+    </div>
+  </div>
+
+  <div class="card superpanel hidden" id="super-recall">
+    <h2 style="font-size:14px;color:#8b93a5;margin:0 0 8px">撤回功能</h2>
+    <div class="hint">有人撤回消息时，机器人把内容私聊发给你；可选把撤回内容重新发回原群。</div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:12px 0">
+      <span style="color:#9aa4b8;font-size:13px;min-width:90px">撤回上报</span>
+      <button id="rcl_en" onclick="rclToggle('enabled')">加载中</button>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:12px 0">
+      <span style="color:#9aa4b8;font-size:13px;min-width:90px">上报时间段</span>
+      <input id="rcl_start" type="time" style="background:#0b0d11;color:#e6e6e6;border:1px solid #2a2f3a;border-radius:8px;padding:8px">
+      <span style="color:#9aa4b8">到</span>
+      <input id="rcl_end" type="time" style="background:#0b0d11;color:#e6e6e6;border:1px solid #2a2f3a;border-radius:8px;padding:8px">
+      <span class="hint">跨午夜可设 22:00 - 06:00</span>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:12px 0">
+      <span style="color:#9aa4b8;font-size:13px;min-width:90px">回发到群</span>
+      <button id="rcl_echo" onclick="rclToggle('echo_group')">加载中</button>
+      <span class="hint">开启后，撤回内容会重新发到原群（带撤回信息）</span>
+    </div>
+    <div style="margin-top:12px;display:flex;gap:8px;align-items:center">
+      <button onclick="saveRecall()">保存</button>
+      <span class="msg" id="rclmsg"></span>
+    </div>
+  </div>
+
+  <div class="card superpanel" id="super-basic">
+    
+    <div style="border:1px solid #1f242e;border-radius:10px;padding:12px;margin-bottom:16px;background:#12151c">
+      <h2 style="font-size:14px;color:#8b93a5;margin:0 0 8px">省钱模式</h2>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:10px">
+        <button id="eco_btn" onclick="economyToggle()">加载中</button>
+        <span style="color:#9aa4b8;font-size:13px">余额 <b id="eco_bal">-</b> 元</span>
+        <span class="msg" id="ecomsg"></span>
+      </div>
+    </div>
+    <h2 style="font-size:14px;color:#8b93a5;margin:0 0 8px">超管 QQ</h2>
+    <div class="hint">填写超级管理员的 QQ 号（多个用英文逗号分隔）。舔狗/专一/怼人模式只对这里的 QQ 生效。</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0;align-items:center">
+      <input id="superqqs" placeholder="如：2844642318,123456789" style="flex:1;min-width:220px">
+      <button onclick="saveSuperQQ()">保存 QQ 号</button>
+    </div>
+    <div class="hint" id="superdesc"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0;align-items:center">
+      <button id="simpbtn" onclick="toggleSimp()">舔狗模式：加载中</button>
+      <span class="hint">开启后对超管唯命是从、语气更黏人。</span>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:nowrap;margin:10px 0;align-items:center;white-space:nowrap">
+      <button id="exclbtn" onclick="toggleExclusive()" style="padding:8px 10px">专一模式：加载中</button>
+      <input id="exwin" type="number" min="10" max="3600" style="width:56px;padding:8px 6px">
+      <span style="color:#9aa4b8;font-size:13px">秒</span>
+      <button onclick="saveSuperWindow()" style="padding:8px 10px">保存</button>
+    </div>
+    <div class="hint">超管发消息后，窗口时间内只回超管；窗口内超管没再说话，其他人恢复正常回复。</div>
+    <div style="display:flex;gap:6px;flex-wrap:nowrap;margin:10px 0;align-items:center;white-space:nowrap">
+      <button id="roastbtn" onclick="toggleRoast()" style="padding:8px 10px">怼人模式：加载中</button>
+      <input id="roastwords" placeholder="怼,损,喷" style="width:110px;padding:8px 6px">
+      <button onclick="saveRoastWords()" style="padding:8px 10px">保存</button>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0">
+      <span style="color:#9aa4b8;font-size:13px">怼人模式</span>
+      <button id="roastfast" onclick="setRoastMode('fast')">快速模式</button>
+      <button id="roastthink" onclick="setRoastMode('think')">思考模式</button>
+      <span class="hint">思考模式更会怼，但会消耗更多 token</span>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:10px 0">
+      <span style="color:#9aa4b8;font-size:13px">怼人程度</span>
+      <input id="roastlevel" type="range" min="0" max="2" step="1" style="flex:1;min-width:160px;accent-color:#2563eb" oninput="updateRoastLabel()" onchange="saveRoastLevel()">
+      <span id="roastlvlabel" style="color:#fbbf24;font-size:13px;min-width:56px">正常级</span>
+    </div>
+    <div class="hint" style="display:flex;justify-content:space-between;max-width:420px">
+      <span onclick="setRoastLevel(0)" style="cursor:pointer;padding:6px 2px">可爱级</span>
+      <span onclick="setRoastLevel(1)" style="cursor:pointer;padding:6px 2px">正常级</span>
+      <span onclick="setRoastLevel(2)" style="cursor:pointer;padding:6px 2px">贴吧级</span>
+    </div>
+    <div class="hint">超管在群里 @某人 并发送触发词，AI 会结合上下文怼这个人（会 @ 被怼的人）。触发词必须<b>完全匹配</b>，例如填「怼他」，只有整条消息是「怼他」才触发，不会匹配「别怼我」。</div>
+    <div style="display:flex;gap:6px;flex-wrap:nowrap;margin:10px 0;align-items:center;white-space:nowrap">
+      <input id="balwords" placeholder="查余额,余额还剩多少" style="flex:1;min-width:120px;padding:8px 6px">
+      <button onclick="saveBalanceWords()" style="padding:8px 10px">保存</button>
+    </div>
+    <div class="hint">仅超级管理员命中这些词才回复余额，其他人问不会输出。</div>
+    <div class="msg" id="supermsg"></div>
+  </div>
+
+  <div class="card superpanel hidden" id="super-capture">
+    <h2 style="font-size:14px;color:#8b93a5;margin:0 0 8px">群内收录表情包</h2>
+    <div class="hint">群聊里 @AI + 引用表情包 + 关键词 + 语境，例如：<code>@AI 添加表情包 开心</code>，会自动收录并把「开心」作为说明。</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0;align-items:center">
+      <span style="color:#9aa4b8;font-size:13px">收录关键词</span>
+      <input id="capwords" placeholder="添加表情包,收录,存表情" style="width:220px">
+      <button onclick="saveCaptureWords()">保存关键词</button>
+      <button id="capbtn" onclick="toggleCapture()" style="background:#4b5563">收录：加载中</button>
+    </div>
+    <div class="hint">只写关键词不写语境时，会自动识图生成说明；收录后的说明可在「聊天 → 表情包」里修改。</div>
+  </div>
+
+  <div class="card superpanel hidden" id="super-profile">
+    <h2 style="font-size:14px;color:#8b93a5;margin:0 0 8px">机器人资料（QQ昵称 / 头像）</h2>
+    <div style="display:flex;gap:12px;align-items:center;margin:10px 0">
+      <img id="botavatar" style="width:64px;height:64px;border-radius:50%;background:#222">
+      <div>
+        <div>QQ：<span id="botuin"></span></div>
+        <div>昵称：<span id="botnicklabel"></span></div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0">
+      <input id="botnick" placeholder="新昵称" style="width:200px">
+      <button onclick="saveBotNick()">修改昵称</button>
+    </div>
+    <div class="hint">注意：通过接口修改昵称，QQ 可能会在「个签历史」里多一条记录，这是 QQ 的机制，无法完全避免。介意的话请直接用手机 QQ 修改。</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0">
+      <input id="botavatarurl" placeholder="头像图片 URL（http/https）" style="flex:1;min-width:220px">
+      <button onclick="saveBotAvatar()">修改头像</button>
+    </div>
+    <div class="msg" id="botmsg"></div>
+  </div>
+
+  <div class="card superpanel hidden" id="super-friend">
+    <h2 style="font-size:14px;color:#8b93a5;margin:0 0 8px">好友申请</h2>
+    <div class="hint">别人加机器人好友时的处理方式。自动通过有名额上限，防止被 QQ 判定异常。</div>
+    <div style="display:flex;gap:6px;flex-wrap:nowrap;margin:10px 0;align-items:center;white-space:nowrap">
+      <button id="fautobtn" onclick="toggleFriendAuto()" style="padding:8px 10px">自动通过：加载中</button>
+      <input id="flimit" type="number" min="1" max="200" style="width:64px;padding:8px 6px">
+      <span style="color:#9aa4b8;font-size:13px">个/天</span>
+      <button onclick="saveFriendCfg()" style="padding:8px 10px">保存</button>
+    </div>
+    <div class="hint">每天最多自动通过几个；超过的名额会保留为「待处理」，可在下面手动通过。</div>
+    <div style="margin:10px 0"><button id="fnotifybtn" onclick="toggleFriendNotify()">超管提醒：加载中</button></div>
+    <div class="hint">开启后每次有好友申请都会私聊通知超级管理员。</div>
+    <div id="friendlist" style="margin-top:12px"></div>
+  </div>
+
+  <div class="card superpanel hidden" id="super-black">
+    <h2 style="font-size:14px;color:#8b93a5;margin:0 0 8px">黑名单（机器人完全不回复）</h2>
+    <div class="hint">被加入黑名单的 QQ 发消息机器人一律不回复。也可以在群里 @某人 说「加入黑名单」或「移出黑名单」（仅超级管理员可用）。</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0;align-items:center">
+      <input id="blackqq" placeholder="要拉黑的 QQ 号" style="width:200px">
+      <button onclick="addBlack()">添加</button>
+    </div>
+    <div id="blacklist"></div>
+    <div class="msg" id="blackmsg"></div>
+  </div>
+</div>
+
+<div id="rest" class="hidden">
+  <div class="card">
+    <h2 style="font-size:14px;color:#8b93a5;margin:0 0 8px">休息模式（模拟人类作息）</h2>
+    <div class="hint">开启后在设定时间段内，机器人只回复超级管理员私聊 + 「休息群白名单」和「休息QQ白名单」里的人和群；其他人/群一律不回复，避免长时间高频在线被 QQ 判定为机器人。</div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:12px 0">
+      <button id="restbtn" onclick="toggleRest()">休息模式：加载中</button>
+      <span style="color:#9aa4b8;font-size:13px">开始</span>
+      <input id="reststart" type="time" value="22:00" style="width:120px">
+      <span style="color:#9aa4b8;font-size:13px">结束</span>
+      <input id="restend" type="time" value="08:00" style="width:120px">
+      <button onclick="saveRestTime()">保存时间</button>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:6px 0 10px">
+      <button id="restnotifybtn" onclick="toggleRestNotify()">休息通知：加载中</button>
+      <span class="hint">进入/结束休息时发一句问候：通知群为空时发到「名单 → 群白名单」里的所有群；第一个群立即发，后面的每隔 30 秒~2 分钟随机间隔</span>
+    </div>
+    <div class="card" style="margin:12px 0;border:1px solid #242833">
+      <h2 style="font-size:14px;color:#8b93a5;margin:0 0 8px">强制唤醒</h2>
+      <div class="hint">休息期间，超管在白名单群 @ 机器人：<b>前「最少次数」次它继续装睡不理</b>，第「最少次数+1」次才算第一次被吵醒；之后每次 @ 语气逐渐变差。达到「最多次数」时回最后一句暴怒话，之后彻底不理，直到怒气按设置时间衰减。<br>带文字 @ 时：生气前会按当前语气回答问题；<b>生气后不管问什么、命令什么都不回答</b>。</div>
+      <div style="margin:10px 0"><button id="wakebtn" onclick="toggleWake()">强制唤醒：加载中</button></div>
+      <div class="memgrid">
+        <label>最少 @ 次数<input id="wakemin" type="number" min="1" max="100"></label>
+        <label>最多 @ 次数<input id="wakemax" type="number" min="1" max="200"></label>
+        <label>多少分钟后恢复（分钟）<input id="wakereset" type="number" min="1" max="1440"></label>
+      </div>
+      <div class="hint" style="margin-top:6px">怒气按「最多-最少」分段衰减：恢复时间 ÷（最多-最少）= 每多少分钟降一级。</div>
+      <div style="margin-top:10px"><button onclick="saveWake()">保存唤醒设置</button><span class="msg" id="wakemsg"></span></div>
+      <div class="hint" style="margin-top:10px">今日被吵醒记录：</div>
+      <div id="wakelog"></div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:6px 0">
+      <input id="restnotifyg" placeholder="通知群号（休息开始/结束在这发一句）" style="width:260px">
+      <button onclick="addRestNotifyGroup()">添加通知群</button>
+    </div>
+    <div id="restnotifylist"></div>
+    <div class="hint" id="reststatus"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0;align-items:center">
+      <input id="restg" placeholder="休息时也回复的群号" style="width:170px">
+      <button onclick="addRestWL('group')">添加群</button>
+      <input id="restu" placeholder="休息时也回复的QQ" style="width:170px">
+      <button onclick="addRestWL('user')">添加QQ</button>
+      <button onclick="importRestWL()" style="background:#4b5563">导入现有白名单</button>
+    </div>
+    <div class="hint">休息群白名单</div>
+    <div id="restglist"></div>
+    <div class="hint" style="margin-top:10px">休息QQ白名单</div>
+    <div id="restulist"></div>
+    <div class="hint" id="restwl" style="margin-top:10px"></div>
+    <div class="msg" id="restmsg"></div>
+  </div>
+</div>
+
+<div id="settings" class="hidden">
+  
+
+  <div class="card">
+    <h2 style="font-size:14px;color:#8b93a5;margin:0 0 8px">版本与更新</h2>
+    <div id="verline" class="hint">当前版本：加载中…</div>
+    <div class="hint" id="vernotes"></div>
+    <div style="display:flex;justify-content:center;margin:14px 0">
+      <button id="checkbtn" onclick="checkUpdate(true)" style="min-width:160px">检查更新</button>
+    </div>
+    <div class="msg" id="updatemsg"></div>
+  </div>
+  <div style="border:1px solid #1f242e;border-radius:10px;padding:12px;margin-bottom:16px;background:#12151c">
+      <h2 style="font-size:14px;color:#8b93a5;margin:0 0 8px">运维</h2>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <button onclick="loadHealth()">健康检查</button>
+        <button onclick="loadErrors()">错误面板</button>
+        <button onclick="diagPack()">下载诊断包</button>
+        <button onclick="rollbackUpdate()" style="background:#7f1d1d">回滚上一版</button>
+        <span class="msg" id="opsmsg"></span>
+      </div>
+      <pre id="opsout" style="white-space:pre-wrap;font-size:12px;color:#9aa4b8;margin:10px 0 0;max-height:240px;overflow:auto"></pre>
+    </div>
+
+</div>
+
+<div id="world" class="hidden">
+  <div class="card">
+    <h2 style="font-size:14px;color:#8b93a5;margin:0 0 8px">世界引擎</h2>
+    <div class="hint">让机器人有自己的时间、地点和正在做的事；对话时会带上"我现在在干嘛"。</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:12px 0">
+      <button id="world_toggle" onclick="worldToggle()">加载中</button>
+      <button id="world_greet_btn" onclick="worldToggleGreet()">作息问候：开</button>
+      <button id="world_photo_btn" onclick="worldTogglePhoto()">实况照片：开</button>
+      <span style="color:#9aa4b8;font-size:13px">每天最多</span><input id="world_photo_max" type="number" min="1" max="10" style="width:60px"><span style="color:#9aa4b8;font-size:13px">张</span><button onclick="savePhotoMax()">保存</button>
+      <span style="color:#9aa4b8;font-size:13px">每天主动</span><input id="world_share_max" type="number" min="0" max="20" style="width:70px"><span style="color:#9aa4b8;font-size:13px">条</span><button onclick="saveShareMax()">保存</button>
+      <button id="world_proactive_btn" onclick="worldToggleProactive()">主动消息：关</button>
+    </div>
+    <div class="hint">作息由系统统一安排（休息 22:00-07:00），不支持自定义；时间按现实速度推进，不提供手动加速与回滚。</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:10px 0">
+      <input id="world_job" placeholder="工作（可改）" style="flex:1;min-width:120px">
+      <input id="world_salary" type="number" placeholder="月工资" style="width:110px">
+      <button onclick="saveWorldJob()">保存</button>
+    </div>
+    <pre id="world_card" style="white-space:pre-wrap;font-size:12px;color:#8b93a5;margin:10px 0 0;border-top:1px solid #1f242e;padding-top:10px">身份卡加载中…</pre>
+    <pre id="world_state" style="white-space:pre-wrap;font-size:13px;color:#c7cede;margin:0">加载中…</pre>
+  </div>
+  <div class="card">
+    <h2 style="font-size:14px;color:#8b93a5;margin:0 0 8px">钱与目标</h2>
+    <div id="world_money" class="hint">加载中…</div>
+    <div id="world_ledger" class="hint" style="margin-top:6px"></div>
+    <button onclick="worldCheck()" style="margin-top:10px">一致性检查</button>
+    <div id="world_check" class="hint" style="margin-top:6px"></div>
+  </div>
+  <div class="card">
+    <h2 style="font-size:14px;color:#8b93a5;margin:0 0 8px">天气</h2>
+    <div id="world_weather" class="hint">加载中…</div>
+    <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+      <button onclick="refreshWeather()">按登录IP刷新</button>
+      <button onclick="locateWeather()" style="background:#0e7490">用手机定位并保存（精确到区）</button>
+      <div class="hint">保存后一直使用这个位置，除非再次点定位。</div>
+    </div>
+  </div>
+  <div class="card">
+    <h2 style="font-size:14px;color:#8b93a5;margin:0 0 8px">今日时间分配</h2>
+    <div id="world_trend" class="hint">加载中…</div>
+  </div>
+  <div class="card">
+    <h2 style="font-size:14px;color:#8b93a5;margin:0 0 8px">任务</h2>
+    <div id="world_tasks" class="hint">加载中…</div>
+  </div>
+  <div class="card">
+    <h2 style="font-size:14px;color:#8b93a5;margin:0 0 8px">你听说的事</h2>
+    <div id="world_knowledge" class="hint">还没有</div>
+  </div>
+  <div class="card">
+    <h2 style="font-size:14px;color:#8b93a5;margin:0 0 8px">最近一篇日记</h2>
+    <div id="world_diary" class="hint">还没有日记</div>
+  </div>
+  <div class="card">
+    <h2 style="font-size:14px;color:#8b93a5;margin:0 0 8px">身边人</h2>
+    <div id="world_npcs" class="hint">加载中…</div>
+  </div>
+  <div class="card">
+    <h2 style="font-size:14px;color:#8b93a5;margin:0 0 8px">最近事件</h2>
+    <div class="hint" style="margin-bottom:8px">只显示最近 40 条，按天分组；被吵醒、偶遇、任务、主动分享会标出来。</div>
+    <div id="world_events" class="hint">加载中…</div>
+  </div>
+</div>
+
+<div id="slang" class="hidden">
+  <div class="card">
+    <h2 style="font-size:14px;color:#8b93a5;margin:0 0 8px">黑话模式（网络用语理解）</h2>
+    <div class="hint">开启后，用户消息里出现网络梗/黑话时，会先让 AI 解释含义，再自然回应；不懂的词会存进词库，下次直接用。</div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:10px 0">
+      <button id="slangbtn" onclick="toggleSlang()">黑话模式：加载中</button>
+      <span class="hint">每几轮识别一次</span>
+      <input id="slangevery" type="number" min="1" max="50" style="width:70px">
+      <span class="hint">识别模型</span>
+      <input id="slangmodel" placeholder="留空=当前模型" style="width:150px">
+      <span class="hint">优化模型</span>
+      <input id="slangoptmodel" placeholder="留空=识别/当前模型" style="width:170px">
+      <button onclick="saveSlangCfg()">保存</button>
+      <span class="msg" id="slangmsg"></span>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0">
+      <span class="hint">停用词（人名/昵称/群名，逗号分隔，不收录）</span>
+      <input id="slangstop" placeholder="大肥鱼,心如止水" style="flex:1;min-width:220px">
+    </div>
+  </div>
+  <div class="card">
+    <h2 style="font-size:14px;color:#8b93a5;margin:0 0 8px">手动添加词条</h2>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0">
+      <input id="slangterm" placeholder="词（如 绝绝子）" style="width:140px">
+      <input id="slangmean" placeholder="含义（一句话）" style="flex:1;min-width:200px">
+      <input id="slangusage" placeholder="使用场景/语气（可选）" style="width:200px">
+      <input id="slangold" type="hidden">
+      <button id="slangaddbtn" onclick="slangSave()">添加</button>
+      <button id="slangcancelbtn" onclick="slangCancel()" style="display:none;background:#4b5563">取消修改</button>
+    </div>
+  </div>
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+      <h2 style="font-size:14px;color:#8b93a5;margin:0">词库</h2>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <span class="hint" id="slangcount"></span>
+        <button id="slangallbtn" onclick="slangToggleAll()">全选</button>
+        <button class="danger" onclick="slangDeleteSelected()">删除选中</button>
+        <button onclick="optimizeSlang()" id="slangoptbtn">AI 优化词条</button>
+      </div>
+    </div>
+    <div id="slanglist" style="margin-top:10px"></div>
+  </div>
+</div>
+
+<div id="img" class="hidden">
+  <div class="card memhead">
+    <div style="flex:1;min-width:220px">
+      <h2 style="font-size:15px;margin:0 0 6px">生图</h2>
+      <div class="hint">群里 @机器人 说「画图 一只猫」或私聊「画图 …」即可生成图片，结果以 base64 直接发出。<br>
+        需要先填硅基流动的密钥；每日限额只统计成功的图，超管不受限。</div>
+    </div>
+    <button id="imgbtn" onclick="toggleImage()">生图：加载中</button>
+  </div>
+
+  <div class="card">
+    <h2 style="font-size:14px;color:#8b93a5;margin:0 0 10px">接口与模型</h2>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+      <span class="hint">供应商</span>
+      <button id="imgpv-siliconflow" onclick="switchImageProvider('siliconflow')">硅基流动</button>
+      <button id="imgpv-zhipu" onclick="switchImageProvider('zhipu')">智谱</button>
+      <span class="hint" id="imgpvnote">当前：硅基流动</span>
+    </div>
+    <div class="hint" id="imgeff" style="margin:-4px 0 10px;color:#9aa4b8">当前生效：—</div>
+    <div class="memgrid">
+      <label style="grid-column:span 2">硅基流动接口地址<input id="imgbase" placeholder="https://api.siliconflow.cn/v1" style="width:100%;box-sizing:border-box"></label>
+      <label style="grid-column:span 2">硅基流动 Key<input id="imgkey" type="password" placeholder="留空不修改" style="width:100%;box-sizing:border-box"></label>
+      <label style="grid-column:span 2">智谱接口地址<input id="imgzhipubase" placeholder="https://open.bigmodel.cn/api/paas/v4" style="width:100%;box-sizing:border-box"></label>
+      <label style="grid-column:span 2">智谱 Key<input id="imgzhipukey" type="password" placeholder="留空不修改" style="width:100%;box-sizing:border-box"></label>
+      <label style="grid-column:span 3">模型
+        <select id="imgmodel" onchange="applyImageModelPreset()" style="background:#0b0d11;color:#e6e6e6;border:1px solid #2a2f3a;border-radius:8px;padding:9px;width:100%;box-sizing:border-box">
+          <option value="Tongyi-MAI/Z-Image-Turbo">Z-Image-Turbo</option>
+        </select>
+      </label>
+      <label>尺寸<input id="imgsize" placeholder="1024x1024" style="width:100%;box-sizing:border-box"></label>
+      <label>步数<input id="imgsteps" type="number" min="1" max="50" style="width:100%;box-sizing:border-box"></label>
+    </div>
+    <div class="hint" style="margin-top:10px">步数 = 扩散采样步数：Turbo / Schnell 蒸馏模型 8 步就够，Qwen-Image、Z-Image、Kolors 建议 25~30 步（非 Turbo 低于 20 会被自动抬到 20）。步数越高越慢、细节略好，超过 35 提升很有限；按张计费，与步数无关。AI画像走图生图时不使用这个值。用智谱时这条也不生效（智谱没有步数参数）。</div>
+    <div style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <button id="imgenhbtn" onclick="toggleImageEnhance()">提示词优化：已开启</button>
+      <span class="hint">开启后，普通生图会先让模型把需求改写成画面描述（多一次模型调用，稍慢一点）；AI画像不受这个开关影响。</span>
+    </div>
+    <div style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <button onclick="saveImagePart('iface')">保存本卡片</button>
+      <span class="msg" id="imgsave1"></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 style="font-size:14px;color:#8b93a5;margin:0 0 10px">额度与权限</h2>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:2px 0 8px">
+      <span class="hint">每日限额</span>
+      <input id="imglimit" type="number" min="1" max="1000" style="width:90px">
+      <span class="hint">张/人</span>
+      <button id="imgsuperbtn" onclick="toggleImageSuperUnlimited()">超管不限制：加载中</button>
+    </div>
+    <div class="hint" style="margin-bottom:12px">限额只统计<b>成功</b>的图；「超管不限制」关闭后，超管也按上面的每日限额计算。</div>
+    <label style="display:flex;flex-direction:column;gap:5px;font-size:12px;color:#8b93a5;max-width:280px">可用范围
+      <select id="imgscope" style="background:#0b0d11;color:#e6e6e6;border:1px solid #2a2f3a;border-radius:8px;padding:9px;width:100%;box-sizing:border-box">
+        <option value="all">所有人可用</option>
+        <option value="whitelist">仅白名单群/人</option>
+        <option value="super">仅超级管理员</option>
+      </select>
+    </label>
+    <div style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <button onclick="saveImagePart('quota')">保存本卡片</button>
+      <span class="msg" id="imgsave2"></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 style="font-size:14px;color:#8b93a5;margin:0 0 10px">提示词</h2>
+    <div class="hint" style="margin-bottom:8px">负面提示词作用于所有普通生图。注意：Turbo / Schnell / flux 系列不支持负面词，选这些模型时不会下发。</div>
+    <label style="display:flex;flex-direction:column;gap:5px;font-size:12px;color:#8b93a5">负面提示词
+      <input id="imgnegative" placeholder="低质量,模糊,畸形,多余肢体,肢体融合,文字,水印" style="width:100%;box-sizing:border-box">
+    </label>
+    <div style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <button onclick="saveImagePart('prompt')">保存本卡片</button>
+      <span class="msg" id="imgsave3"></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 style="font-size:14px;color:#8b93a5;margin:0 0 10px">AI画像（画AI）</h2>
+    <div class="hint" style="margin-bottom:10px">只有用户说「画AI / AI画像 / 画你自己 / 你长什么样」这类话时才生效，<b>普通生图完全不受影响</b>。<br>
+      配了参考图会优先走图生图（形象最稳、最像参考图）；没配参考图、或图生图调用失败，会自动退回下面的画风锁 + 外观描述模板。</div>
+    <div class="memgrid">
+      <label style="grid-column:1/-1">参考图（公网 URL 或服务器本地路径）<input id="imgselfref" placeholder="https://<你的域名>/stickers/self_ref.jpg 或 /opt/qqbot/bridge/stickers/self_ref.jpg" style="width:100%;box-sizing:border-box"></label>
+      <label>图生图模型<input id="imgselfeditmodel" placeholder="Qwen/Qwen-Image-Edit" style="width:100%;box-sizing:border-box"></label>
+      <label>画风锁定<input id="imgselfstyle" placeholder="Q版chibi、三头身、正面全身、纯白背景" style="width:100%;box-sizing:border-box"></label>
+      <label style="grid-column:1/-1">外观描述<input id="imgselfdesc" placeholder="深蓝到浅蓝渐变长发、鱼鳍耳、蕾丝女仆头巾…" style="width:100%;box-sizing:border-box"></label>
+      <label style="grid-column:1/-1">AI画像负面<input id="imgselfneg" placeholder="写实,照片,坐姿,躺姿,沙发,室内场景,家具,水印…" style="width:100%;box-sizing:border-box"></label>
+    </div>
+    <label style="display:flex;flex-direction:column;gap:5px;font-size:12px;color:#8b93a5;margin-top:10px">图生图编辑指令（走图生图时使用）
+      <textarea id="imgselfeditprompt" rows="3" style="width:100%;box-sizing:border-box;background:#0b0d11;color:#e6e6e6;border:1px solid #2a2f3a;border-radius:8px;padding:9px;font-family:inherit;line-height:1.6" placeholder="保持参考图角色的外观与画风不变，整理成干净的Q版立绘…"></textarea>
+    </label>
+    <div style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <button onclick="saveImagePart('self')">保存本卡片</button>
+      <span class="msg" id="imgsave4"></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 style="font-size:14px;color:#8b93a5;margin:0 0 10px">测试生图</h2>
+    <div class="hint" style="margin-bottom:8px">用当前配置生成一张并直接显示在下面，<b>会消耗一次生图额度（按张计费）</b>。测试 AI 画像时把提示词填成「画一张AI」即可验证链路。</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <input id="imgtestprompt" placeholder="测试提示词，如：一只猫在键盘上睡觉" style="flex:1;min-width:240px" value="一只猫在键盘上睡觉">
+      <button onclick="testImage()" style="background:#0e7490">测试生图</button>
+      <span class="msg" id="imgmsg"></span>
+    </div>
+    <div id="imgtestwrap" style="display:none;margin-top:12px;text-align:center">
+      <img id="imgtestimg" style="max-width:100%;max-height:460px;border-radius:10px;border:1px solid #2a2f3a">
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 style="font-size:14px;color:#8b93a5;margin:0 0 10px">保存全部</h2>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <button onclick="saveImage()">保存全部设置</button>
+      <span class="msg" id="imgsavemsg"></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 style="font-size:14px;color:#8b93a5;margin:0 0 10px">模型怎么选</h2>
+    <div class="hint" style="line-height:1.9">
+      · <b>Z-Image-Turbo</b>（约 ¥0.1/张）：6B 蒸馏版，最快最便宜，日常聊天画图首选，复杂细节一般。<br>
+      · <b>Z-Image</b>（约 ¥0.3/张）：同系列基础版，细节和质感更好，速度慢一些，适合认真画。<br>
+      · <b>Qwen-Image</b>（约 ¥0.3/张）：20B，中文理解最强、画面里的文字最稳，适合海报/带字图，慢且贵。<br>
+      · <b>Qwen-Image-Edit</b>（AI画像用的图生图）：拿参考图改图，形象最稳定，按张计费，固定走硅基流动。<br>
+      · <b>GLM-Image</b>（智谱，¥0.1/次）：海报、PPT、科普图、多格图这类文字密集画面最强，默认 1280x1280，固定 hd。<br>
+      · <b>CogView-4 / CogView-4-250304</b>（智谱，¥0.06/次）：中文提示词理解好、能写汉字，性价比高。<br>
+      · <b>CogView-3-Flash</b>（智谱，免费）：快、免费，质量一般，适合试提示词。<br>
+      · <b>Kolors</b>（免费）：中文友好，人物/二次元均衡，适合随便玩；高峰期可能要排队。<br>
+      价格以硅基流动模型广场为准；Key 只存在服务器数据库，接口只返回掩码。
+    </div>
+  </div>
+</div>
+
+<div id="mem" class="hidden">
+  <div class="card memhead">
+    <div style="flex:1;min-width:200px">
+      <h2 style="font-size:15px;margin:0 0 6px">记忆模式</h2>
+      <div class="hint">超级管理员：<b>180 天</b>未被调用自动清理，调用 <b>3 次</b>以上永久保留；普通用户：<b>7 天</b>后清理，不保留永久。<br>「调用」= 消息或 AI 回复里真正用到这条记忆（命中内容才计），不是每条消息都算。</div>
+    </div>
+    <button id="membtn" onclick="toggleMemory()">记忆模式：加载中</button>
+  </div>
+  <div class="card">
+    <h2 style="font-size:14px;color:#8b93a5;margin:0 0 10px">参数设置</h2>
+    <div class="memgrid">
+      <label>超管保留天数<input id="memsuperdays" type="number" min="1"></label>
+      <label>普通保留天数<input id="memnormaldays" type="number" min="1"></label>
+      <label>超管每人上限<input id="memsuperlimit" type="number" min="1"></label>
+      <label>普通每人上限<input id="memnormallimit" type="number" min="1"></label>
+      <label>注入条数·超管<input id="memsuperinject" type="number" min="1"></label>
+      <label>注入条数·普通<input id="memnormalinject" type="number" min="1"></label>
+      <label>每几轮提取<input id="memextract" type="number" min="1"></label>
+      <label>审核模型
+        <select id="memreviewmodel" style="background:#0b0d11;color:#e6e6e6;border:1px solid #2a2f3a;border-radius:8px;padding:9px">
+          <option value="">当前默认模型</option>
+        </select>
+      </label>
+    </div>
+    <div style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <button onclick="saveMemoryConfig()">保存设置</button>
+      <button onclick="loadReviewModels()" style="background:#0e7490">读取可用模型</button>
+      <span class="msg" id="memmsg"></span>
+    </div>
+  </div>
+  <div class="card">
+    <h2 style="font-size:14px;color:#8b93a5;margin:0 0 10px">查询</h2>
+    <div class="hint" style="margin-bottom:8px">QQ、关键词、日期可单独查询；同时填写时需要同时满足（AND）。日期按记忆创建时间算。</div>
+    <div class="memrow">
+      <input id="memqq" placeholder="QQ号" style="width:150px">
+      <input id="memkw" placeholder="关键词" style="width:160px">
+      <input id="memdate" type="date" style="width:160px">
+      <button onclick="loadMemory()">查询</button>
+      <button onclick="memReset()" style="background:#4b5563">重置</button>
+    </div>
+  </div>
+  <div class="card">
+    <h2 style="font-size:14px;color:#8b93a5;margin:0 0 10px">添加记忆</h2>
+    <div class="memrow">
+      <input id="memaddqq" placeholder="QQ号" style="width:150px">
+      <input id="memaddtext" placeholder="记忆内容（最多120字）" style="flex:1;min-width:220px">
+      <select id="memaddlevel" style="background:#0b0d11;color:#e6e6e6;border:1px solid #2a2f3a;border-radius:8px;padding:9px">
+        <option value="normal">普通（7天）</option>
+        <option value="high">超管（180天/永久）</option>
+      </select>
+      <button onclick="memAdd()">添加</button>
+    </div>
+  </div>
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+      <h2 style="font-size:14px;color:#8b93a5;margin:0">记忆列表</h2>
+      <span style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <span class="hint" id="memcount"></span>
+        <button id="memreviewbtn" onclick="aiReview()" style="background:#7c2d12">AI 审核清理</button>
+      </span>
+    </div>
+    <div id="memlist" style="margin-top:10px"></div>
+  </div>
+</div>
+
+  <div id="memprogoverlay" class="modal hidden" style="z-index:10002">
+    <div class="modal-box" style="max-width:420px;text-align:center">
+      <b style="font-size:15px">AI 审核中</b>
+      <div style="margin:16px 0 8px;background:#1c2029;border-radius:8px;height:12px;overflow:hidden">
+        <div id="memprogbar" style="height:12px;width:0;background:linear-gradient(90deg,#2563eb,#22c55e);transition:width .3s"></div>
+      </div>
+      <div class="hint" id="memprogtxt">准备中…</div>
+      <div class="hint">正在分批交给 AI 处理，请不要关闭页面</div>
+    </div>
+  </div>
+
+  <div id="memreviewmodal" class="modal hidden" onclick="if(event.target===this) closeMemReview()">
+    <div class="modal-box" onclick="event.stopPropagation()" style="max-width:720px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <b id="memreviewtitle" style="font-size:15px">AI 审核结果</b>
+        <span onclick="closeMemReview()" style="cursor:pointer;color:#8b93a5;font-size:22px;line-height:1">×</span>
+      </div>
+      <div class="hint" id="memreviewhint">勾选 = 删除，取消勾选 = 保留。可以逐条确认。</div>
+      <div style="display:flex;gap:8px;align-items:center;margin:10px 0">
+        <button id="memreviewtoggle" onclick="memReviewToggleAll()">取消全选</button>
+        <span class="hint" id="memreviewcount"></span>
+      </div>
+      <div id="memreviewlist" style="max-height:55vh;overflow:auto;border-top:1px solid #242833;border-bottom:1px solid #242833;padding:6px 0"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+        <button onclick="closeMemReview()" style="background:#4b5563">取消</button>
+        <button class="danger" onclick="memReviewDelete()">删除选中</button>
+      </div>
+    </div>
+  </div>
+
+<div id="persona" class="hidden">
+  <div class="card">
+    <h2 style="font-size:14px;color:#8b93a5;margin:0 0 8px">人格切换（可存多套）</h2>
+    <div class="hint">选一个当前人格，或新建一套。点「设为当前」后下一条消息起生效。默认人格来自 config.yaml。</div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0">
+      <span style="color:#9aa4b8;font-size:13px">当前人格</span>
+      <select id="personasel" onchange="onPersonaSelect()" style="background:#0b0d11;color:#e6e6e6;border:1px solid #2a2f3a;border-radius:8px;padding:8px;min-width:180px"></select>
+      <button onclick="newPersona()">新建</button>
+      <button onclick="activatePersona()">设为当前</button>
+      <button onclick="deletePersona2()">删除</button>
+      <span class="hint" id="personalength"></span>
+    </div>
+    <input id="personaname" placeholder="人格名称，如：傲娇版 / 舔狗版 / 高冷版" style="width:100%;box-sizing:border-box;margin:8px 0">
+    <textarea id="personatext" rows="16" style="width:100%;box-sizing:border-box;background:#0b0d11;color:#e6e6e6;border:1px solid #2a2f3a;border-radius:8px;padding:10px;font-size:13px;line-height:1.7"></textarea>
+    <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+      <button onclick="savePersona()">保存当前编辑</button>
+    </div>
+    <div class="msg" id="personamsg"></div>
+  </div>
+  <div class="card">
+    <h2 style="font-size:14px;color:#8b93a5;margin:0 0 8px">性别感知</h2>
+    <div class="hint">开启后，识别到对方是男生会偶尔称呼「哥哥」，女生会偶尔称呼「姐姐」，显得更亲近；性别未知时不猜、用中性称呼。</div>
+    <div style="margin-top:10px"><button id="genderbtn" onclick="toggleGender()">性别感知：加载中</button></div>
+  </div>
+</div>
+
+<div id="pv" class="hidden">
+  <div class="card">
+    <h2 style="font-size:14px;color:#8b93a5;margin:0 0 8px">当前模型</h2>
+    <div class="hint" id="pvcurrent">加载中…</div>
+    <div style="margin-top:10px"><button id="pvbalbtn" onclick="loadBalances(true)">刷新余额</button>
+      <span class="hint" id="pvbalmsg" style="margin-left:8px"></span></div>
+  </div>
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+      <h2 style="font-size:14px;color:#8b93a5;margin:0">已配置供应商</h2>
+      <button onclick="newProvider()">＋ 添加模型</button>
+    </div>
+    <div id="pvlist" style="margin-top:10px"></div>
+  </div>
+
+  <div id="pvmodal" class="modal hidden" onclick="if(event.target===this) closeProviderModal()">
+    <div class="modal-box" onclick="event.stopPropagation()">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <b id="pvmodaltitle" style="font-size:15px">添加模型</b>
+        <span onclick="closeProviderModal()" style="cursor:pointer;color:#8b93a5;font-size:22px;line-height:1">×</span>
+      </div>
+      <div class="hint">选预设自动填地址和模型；也支持自定义。粘贴 Key 后点「自动识别」会尝试匹配服务商。</div>
+      <div style="display:flex;gap:8px;margin:10px 0;flex-wrap:wrap">
+        <select id="pvpreset" onchange="applyPreset()" style="flex:1;min-width:140px;background:#0b0d11;color:#e6e6e6;border:1px solid #2a2f3a;border-radius:8px;padding:9px 11px"></select>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0">
+        <input id="pvname" placeholder="名称（如 deepseek）" style="width:140px">
+        <input id="pvbase" placeholder="base_url（https://.../v1）" style="flex:1;min-width:180px">
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0">
+        <input id="pvmodel" placeholder="模型名（可手填）" style="width:170px">
+        <select id="pvmodelsel" onchange="pickPvModel(this.value)" style="background:#0b0d11;color:#e6e6e6;border:1px solid #2a2f3a;border-radius:8px;padding:9px;min-width:170px">
+          <option value="">可用模型（下拉选择）</option>
+        </select>
+        <button onclick="loadModelsForForm()" style="padding:8px 10px">获取可用模型</button>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0">
+        <input id="pvkey" type="password" placeholder="API Key" style="flex:1;min-width:160px">
+      </div>
+      <div style="display:flex;gap:8px;margin:12px 0 4px">
+        <button onclick="autoDetectProvider()">自动识别</button>
+        <button onclick="saveProvider()">保存</button>
+      </div>
+      <div class="msg" id="pvmsg"></div>
+    </div>
+  </div>
+</div>
+
+<div id="voice" class="hidden">
+  <div class="card">
+    <div class="hint">语音固定使用<b>智谱端到端语音（glm-4-voice）</b>：更像真人、有情绪；代价是可能微调措辞。<br>
+      "跟随语音"= 对方发语音才回语音；"全部"= 所有回复都发语音。</div>
+    <div style="display:flex;gap:8px;margin:10px 0;align-items:center;flex-wrap:wrap">
+      <button id="ttsbtn" onclick="toggleTTS()">加载中…</button>
+      <span style="color:#9aa4b8;font-size:13px">模式</span>
+      <select id="ttsmode" style="background:#0b0d11;color:#e6e6e6;border:1px solid #2a2f3a;border-radius:8px;padding:8px">
+        <option value="voice_in">跟随语音</option>
+        <option value="always">全部回复</option>
+      </select>
+      <button id="previewbtn" onclick="previewVoice()">试听</button>
+      <button id="suptextbtn" onclick="toggleSuperText()">超管文字也回语音：已关闭</button>
+      <span class="msg" id="voicemsg"></span>
+    </div>
+    <div style="display:flex;gap:8px;margin:8px 0;align-items:center;flex-wrap:wrap">
+      <span style="color:#9aa4b8;font-size:13px">合成方式</span>
+      <select id="voiceengine" style="display:none">
+        <option value="tts">tts</option>
+        <option value="voice">voice</option>
+        <option value="breeze">breeze</option>
+      </select>
+      <button id="ve-tts" onclick="setVoiceEngine('tts')">逐字朗读</button>
+      <button id="ve-voice" onclick="setVoiceEngine('voice')">情感对话</button>
+      <button id="ve-breeze" onclick="setVoiceEngine('breeze')">Breeze Blue</button>
+    </div>
+    <div id="vf-common" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-top:10px">
+      <label id="vf-voicename" style="color:#8b93a5;font-size:12px">音色
+        <select id="voice_name" style="background:#0b0d11;color:#e6e6e6;border:1px solid #2a2f3a;border-radius:8px;padding:9px;width:100%;box-sizing:border-box;margin-top:4px">
+          <option value="tongtong">tongtong（彤彤）</option>
+          <option value="xiaochen">xiaochen（小陈）</option>
+          <option value="chuichui">chuichui（锤锤）</option>
+          <option value="jam">jam</option>
+          <option value="kazi">kazi</option>
+          <option value="douji">douji</option>
+          <option value="luodo">luodo</option>
+        </select>
+      </label>
+      <label style="color:#8b93a5;font-size:12px">语速
+        <select id="voicespeed" style="background:#0b0d11;color:#e6e6e6;border:1px solid #2a2f3a;border-radius:8px;padding:9px;width:100%;box-sizing:border-box;margin-top:4px">
+          <option value="0.9">慢一点（0.9）</option>
+          <option value="1.0">正常（1.0）</option>
+          <option value="1.1">稍快（1.1）</option>
+          <option value="1.2">快（1.2）</option>
+          <option value="1.3">很快（1.3）</option>
+        </select>
+      </label>
+    </div>
+    <div id="vf-zhipu" style="display:grid;grid-template-columns:minmax(0,1fr);gap:10px;margin-top:10px">
+      <label style="color:#8b93a5;font-size:12px">智谱 Key（逐字朗读 / 情感对话）
+        <input id="zvoice_key" type="password" placeholder="留空则复用生图 Key" style="width:100%;box-sizing:border-box;margin-top:4px">
+      </label>
+    </div>
+    <div id="vf-breeze" style="display:none;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-top:10px">
+      <label style="color:#8b93a5;font-size:12px">Breeze Key（xi-api-key）
+        <input id="breezekey" type="password" placeholder="留空不修改" style="width:100%;box-sizing:border-box;margin-top:4px">
+      </label>
+      <label style="color:#8b93a5;font-size:12px">Voice ID
+        <input id="breezevoice" placeholder="voc_xxx" style="width:100%;box-sizing:border-box;margin-top:4px">
+      </label>
+      <label style="color:#8b93a5;font-size:12px">模型
+        <select id="breezemodel" style="background:#0b0d11;color:#e6e6e6;border:1px solid #2a2f3a;border-radius:8px;padding:9px;width:100%;box-sizing:border-box;margin-top:4px">
+          <option value="breeze-tts-2">breeze-tts-2（含中文）</option>
+          <option value="breeze-tts-2-multilingual">breeze-tts-2-multilingual</option>
+        </select>
+      </label>
+    </div>
+    <div style="margin-top:10px">
+      <label style="color:#8b93a5;font-size:12px;display:block">情绪指令
+        <input id="zvstyle" placeholder="用自然、有情绪起伏的语气说话，语速稍快一点。每句话都完整说完，不要突然停下。" style="width:100%;box-sizing:border-box;margin-top:4px">
+      </label>
+    </div>
+    <div class="hint" style="margin-top:6px">情绪指令示例：`像和朋友聊天一样，语气轻快，带点笑意` / `温柔一点，语速慢一些` / `严肃一点，不要拖音`。Breeze 模式下这段会作为 instructions 传给模型。</div>
+    <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+      <button onclick="testVoiceKey()">测试 Key</button>
+      <button onclick="voiceDiag()">语音诊断</button>
+      <span class="msg" id="voicemsgtmp"></span>
+    </div>
+    <div id="voicediag" style="display:none;margin-top:8px"></div>
+    <div class="hint" id="voicemsg" style="margin-top:6px"></div>
+    <div class="hint" id="voiceffmpeg" style="margin-top:6px"></div>
+    <div id="voicepreview" style="display:none;margin-top:8px">
+      <audio id="voiceplayer" controls preload="auto" style="width:100%"
+             onerror="var m=document.getElementById('voicemsg');if(m){m.textContent='音频加载失败，请重新试听';m.style.color='#f87171'}"></audio>
+    </div>
+    <div id="voicediag" style="display:none;margin-top:8px"></div>
+    <div class="hint" id="voiceffmpeg" style="margin-top:6px"></div>
+    <div class="hint" style="margin-top:10px">Key 只存在<b>本机数据库</b>，发布包默认全空：别人装这套程序要填自己的 Key，不会用到你的。</div>
+    <div style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <button onclick="saveVoiceTTS()">保存语音设置</button>
+      <span class="msg" id="ttssavemsg"></span>
+    </div>
+  </div>
+  <div class="card">
+    <h2 style="font-size:14px;color:#8b93a5;margin:0 0 8px">语音识别（ASR）</h2>
+    <div class="hint">填 OpenAI 兼容的语音转写服务。推荐：<br>
+      · 硅基流动 <code>https://api.siliconflow.cn/v1</code>（模型 FunAudioLLM/SenseVoiceSmall）<br>
+      · 智谱 <code>https://open.bigmodel.cn/api/paas/v4</code>（模型 <code>glm-asr-2512</code>，支持方言，用同一个智谱 Key）<br>
+      · Groq <code>https://api.groq.com/openai/v1</code>（模型 whisper-large-v3-turbo）</div>
+    <div style="margin:6px 0"><button onclick="fillZhipuAsr()" style="background:#0e7490">一键填入智谱 ASR（推荐，识别更准）</button></div>
+    <div style="display:flex;gap:8px;margin:10px 0;align-items:center;flex-wrap:wrap">
+      <button id="asrbtn" onclick="toggleASR()">加载中…</button>
+    </div>
+    <div style="display:flex;gap:8px;margin:8px 0;align-items:center;flex-wrap:wrap">
+      <span style="color:#9aa4b8;font-size:13px">识别引擎</span>
+      <select id="asrengine" onchange="toggleASRFields()" style="background:#0b0d11;color:#e6e6e6;border:1px solid #2a2f3a;border-radius:8px;padding:8px">
+        <option value="local">本地 Whisper（免费）</option>
+        <option value="api">在线 API（OpenAI 兼容）</option>
+      </select>
+      <span style="color:#9aa4b8;font-size:13px">本地模型</span>
+      <select id="asrlocal" style="background:#0b0d11;color:#e6e6e6;border:1px solid #2a2f3a;border-radius:8px;padding:8px">
+        <option value="tiny">tiny（最快）</option>
+        <option value="base">base（推荐）</option>
+        <option value="small">small（更准）</option>
+      </select>
+    </div>
+    <div id="asrapifields" style="display:none">
+      <div style="display:flex;gap:8px;margin:8px 0;flex-wrap:wrap">
+        <input id="asrbase" placeholder="服务地址 https://.../v1" style="flex:1;min-width:180px">
+        <input id="asrmodel" placeholder="模型名" style="width:180px">
+        <input id="asrkey" type="password" placeholder="ASR Key（留空不修改）" style="flex:1;min-width:160px">
+      </div>
+      <div class="hint" id="asrkeyinfo"></div>
+    </div>
+    <div style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <button onclick="saveVoiceASR()">保存语音识别设置</button>
+      <span class="msg" id="asrmsgsave"></span>
+    </div>
+  </div>
+</div>
+
+<div id="qr" class="hidden">
+  <div class="card">
+    <div class="hint">点击下方按钮才会向 QQ 申请新二维码（60 秒冷却，避免频繁请求触发风控）。</div>
+    <div style="margin:12px 0;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <button id="qrbtn" onclick="getQR()">申请扫码二维码</button>
+      <button onclick="getQR(true)" style="background:#4b5563">刷新二维码</button>
+      <button onclick="restartNapcat()" style="background:#b91c1c">重启 QQ 连接</button>
+      <label class="hint" style="display:flex;gap:6px;align-items:center;margin:0">
+        <input type="checkbox" id="qrautorefresh"> 过期自动刷新（会换新码，扫码中别开）
+      </label>
+    </div>
+    <div class="msg" id="qrmsg"></div>
+    <div id="qrimg" style="margin-top:10px"></div>
+    <div class="hint" id="qrinfo"></div>
+    <div class="hint" id="qrcountdown"></div>
+  </div>
+</div>
+
+<div id="hosting" class="hidden">
+  
+  <div class="ht-wrap">
+    <div class="ht-card">
+      <div class="ht-title">创建租户</div>
+      <div class="ht-sub">创建后自动生成外链和初始密码；用户扫码后自动绑定 QQ。</div>
+      <div class="ht-form">
+        <div class="ht-field"><label>账号</label><input id="htacct" value="admin"></div>
+        <div class="ht-field"><label>密码（留空自动生成）</label><input id="htpass" placeholder="留空自动生成"></div>
+        <div class="ht-field"><label>运行服务器</label><select id="htnode" onchange="loadHosting()"></select></div>
+        <div class="ht-field"><label>天数</label><input id="htdays" value="30"></div>
+        <div class="ht-field"><label>&nbsp;</label><button onclick="hostingCreate()">创建租户</button></div>
+      </div>
+      <div class="ht-actions"><span class="msg" id="htmsg"></span></div>
+    </div>
+
+    <div class="ht-card">
+      <div class="ht-title">远程服务器 · 一键部署</div>
+      <div class="ht-sub">填对方电脑/服务器的连接信息。不懂可以留空，先问 QQ：2844642318。</div>
+      <div class="ht-form">
+        <div class="ht-field"><label>服务器 IP</label><input id="dsip" placeholder="1.2.3.4"></div>
+        <div class="ht-field"><label>SSH 账号</label><input id="dsuser" value="root"></div>
+        <div class="ht-field"><label>SSH 密码</label><input id="dspass" type="password"></div>
+        <div class="ht-field"><label>远程端口（默认即可）</label><input id="dsport" value="22"></div>
+        <div class="ht-field"><label>显示名称</label><input id="dslabel" placeholder="上海2号机"></div>
+        <div class="ht-field"><label>&nbsp;</label><button onclick="hostingDeploy()">一键部署</button></div>
+      </div>
+      <div class="ht-info" id="dsmsg">部署约需 2~5 分钟，期间请勿关闭页面。目标机器建议 2C2G 以上、Ubuntu 22.04+。</div>
+    </div>
+
+    <div class="ht-card">
+      <div class="ht-head"><div class="ht-title" style="margin:0">租户列表</div>
+        <button onclick="loadHosting()" style="margin-left:auto">刷新</button></div>
+      <div id="htrows" style="margin-top:4px"></div>
+    </div>
+  </div>
+</div>
+
+<div id="game" class="hidden">
+  <div class="card">
+    <h2 style="font-size:15px;margin:0 0 6px">剧本杀</h2>
+    <div class="hint">私聊直接玩；群聊需先把群加入白名单，再让玩家 @机器人 发「继续游戏」接入。剧本只存在你这台服务器，用户部署只能通过接口拉取、不会落盘。</div>
+    <div class="hint" id="gamestats" style="margin-top:8px"></div>
+    <div style="margin-top:8px"><button id="gamerestbtn" onclick="gameToggleRestBypass()">休息时段放行剧本玩家</button></div>
+  </div>
+
+  <div class="card">
+    <h2 style="font-size:14px;color:#8b93a5;margin:0 0 8px">添加玩家</h2>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <input id="gameqq" placeholder="玩家 QQ 号" style="width:200px">
+      <select id="gamescript" style="background:#0b0d11;color:#e6e6e6;border:1px solid #2a2f3a;border-radius:8px;padding:8px"></select>
+      <button onclick="gameAddPlayer()">添加并开启</button>
+      <span class="msg" id="gamemsg"></span>
+    </div>
+    <div class="hint">只填 QQ 不选剧本也可以：玩家发消息时会被告知联系你添加剧本。</div>
+  </div>
+
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+      <h2 style="font-size:14px;color:#8b93a5;margin:0">玩家列表</h2>
+      <button onclick="loadGame()">刷新</button>
+    </div>
+    <div id="gameplayers" style="margin-top:10px"></div>
+  </div>
+
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+      <h2 style="font-size:14px;color:#8b93a5;margin:0">群内接入</h2>
+      <button onclick="loadGameCtx()">刷新</button>
+    </div>
+    <div class="hint" style="margin-top:6px">同一玩家只有最后接入的群会响应；点「断开」只退出这个群，进度保留。</div>
+    <div id="gamectx" style="margin-top:10px"></div>
+  </div>
+
+  <div class="card" id="gamerunbox" style="display:none">
+    <h2 style="font-size:14px;color:#8b93a5;margin:0 0 8px">历史局 · <span id="gamerunqq"></span></h2>
+    <div id="gameruns"></div>
+    <div id="gamemsgs" style="margin-top:10px;max-height:360px;overflow:auto;font-size:13px;color:#c9d1d9"></div>
+  </div>
+
+</div>
+
+<div id="wl" class="hidden">
+  <div class="card">
+    <div class="hint" id="wlquota"></div>
+  </div>
+  <div class="card">
+    <h2 style="font-size:14px;color:#8b93a5;margin:0 0 8px">群聊白名单</h2>
+    <div class="hint">留空 = 允许所有群；添加后 = 只在列表中的群回复。</div>
+    <div style="display:flex;gap:8px;margin:10px 0">
+      <input id="ginput" placeholder="群号（纯数字）" style="flex:1">
+      <button onclick="addWL('group')">添加</button>
+    </div>
+    <div id="glist"></div>
+  </div>
+  <div class="card">
+    <h2 style="font-size:14px;color:#8b93a5;margin:0 0 8px">QQ 号白名单</h2>
+    <div class="hint">留空 = 允许所有人；添加后 = 只有列表中的 QQ 能使用机器人（群聊和私聊都生效）。</div>
+    <div style="display:flex;gap:8px;margin:10px 0">
+      <input id="uinput" placeholder="QQ 号（纯数字）" style="flex:1">
+      <button onclick="addWL('user')">添加</button>
+    </div>
+    <div id="ulist"></div>
+  </div>
+</div>
+
+<div id="kw" class="hidden">
+  <div class="card">
+    <h2 style="font-size:14px;color:#8b93a5;margin:0 0 8px">触发关键词</h2>
+    <div class="hint">群聊里消息**包含**这些关键词时，大肥鱼会冒出来回复（不需要 @）。@ 触发始终有效；私聊始终回复。修改后立即生效，无需重启。</div>
+    <div style="display:flex;gap:8px;margin:10px 0">
+      <input id="kwinput" placeholder="关键词（如：大肥鱼）" style="flex:1">
+      <button onclick="addKW()">添加</button>
+    </div>
+    <div id="kwlist"></div>
+  </div>
+</div>
+
+<div id="pf" class="hidden">
+  <div class="card">
+    <h2 style="font-size:14px;color:#8b93a5;margin:0 0 8px">QQ 专属回复前缀</h2>
+    <div class="hint">给不同 QQ 号设置不同前缀，机器人回复时自动加在开头（如 123456789 → 主人）。修改立即生效。留空则不加前缀。</div>
+    <div style="margin:10px 0"><button id="pfbtn" onclick="togglePrefix()">加载中…</button></div>
+    <div style="display:flex;gap:8px;margin:10px 0;flex-wrap:wrap">
+      <input id="pfqq" placeholder="QQ 号" style="flex:1;min-width:110px">
+      <input id="pftext" placeholder="前缀（如：主人）" style="flex:1;min-width:110px">
+      <button onclick="addPrefix()">添加/更新</button>
+    </div>
+    <div id="pflist"></div>
+  </div>
+</div>
+
+<div id="auto" class="hidden">
+  <div class="card">
+    <h2 style="font-size:14px;color:#8b93a5;margin:0 0 8px">接话模式</h2>
+    <div class="hint">开启后，下面名单里的 QQ 无论发什么（不用 @、不用关键词），机器人都接话回复。修改立即生效。</div>
+    <div style="margin:12px 0">
+      <button id="autobtn" onclick="toggleAuto()">加载中…</button>
+      <span id="autostate" style="margin-left:10px;color:#9aa4b8;font-size:13px"></span>
+    </div>
+    <div style="display:flex;gap:8px;margin:10px 0">
+      <input id="autoqq" placeholder="QQ 号（纯数字）" style="flex:1">
+      <button onclick="addAuto()">添加接话 QQ</button>
+    </div>
+    <div id="autolist"></div>
+  </div>
+</div>
+
+<div id="gm" class="hidden">
+  <div id="gmtabs" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px"></div>
+  <div class="card" id="gm_panel" style="display:none">
+    <h2 style="font-size:15px;color:#e6e6e6;margin:0 0 8px">群面板</h2>
+    <div class="hint">为每个群创建独立面板：独立账号密码、独立外链、独立配置。</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:12px 0">
+      <input style="text-align:center;min-width:150px" id="gmp_gid" placeholder="群号" style="width:160px">
+      <input id="gmp_user" placeholder="账号（留空自动生成）" style="width:180px">
+      <input id="gmp_pass" placeholder="密码（留空自动生成）" style="width:180px">
+      <button onclick="gmGroupCreate()">创建/重置</button>
+      <span class="msg" id="gmp_msg"></span>
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-size:13px">
+      <thead><tr style="color:#8b93a5;text-align:left">
+        <th style="padding:6px">群号</th><th>账号</th><th>密码</th><th>状态</th><th>外链</th><th style="width:260px">操作</th>
+      </tr></thead>
+      <tbody id="gmp_body"></tbody>
+    </table>
+  </div>
+  <div class="card">
+    <h2 style="font-size:15px;color:#e6e6e6;margin:0 0 8px">群聊管理</h2>
+    <div class="hint">只在「管理群号」内生效，且机器人需为该群管理员。</div>
+
+    <div class="hint" style="margin:14px 0 6px;color:#c9d1d9">基本参数</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px">
+      <label style="color:#8b93a5;font-size:12px">管理群号（逗号分隔）
+        <input id="gm_groups" placeholder="243625638,1080393427" style="width:100%;box-sizing:border-box;margin-top:4px">
+      </label>
+      <label style="color:#8b93a5;font-size:12px">验证超时（分钟）
+        <input id="gm_timeout_min" type="number" min="1" max="60" style="width:100%;box-sizing:border-box;margin-top:4px">
+      </label>
+      <label style="color:#8b93a5;font-size:12px">验证方式
+        <select id="gm_verify_mode" style="width:100%;box-sizing:border-box;margin-top:4px">
+          <option value="private">私聊验证</option><option value="group">群内验证</option>
+        </select>
+      </label>
+      <label style="color:#8b93a5;font-size:12px">可操作 QQ（逗号分隔）
+        <input id="gm_kick_qqs" placeholder="123456,234567" style="width:100%;box-sizing:border-box;margin-top:4px">
+      </label>
+      <label style="color:#8b93a5;font-size:12px">处罚通知 QQ（逗号分隔）
+        <input id="gm_punish_qqs" placeholder="不填则发给超管" style="width:100%;box-sizing:border-box;margin-top:4px">
+      </label>
+      <label style="color:#8b93a5;font-size:12px">踢人指令关键词
+        <input id="gm_kick_keywords" placeholder="踢,踢出群聊" style="width:100%;box-sizing:border-box;margin-top:4px">
+      </label>
+      <label style="color:#8b93a5;font-size:12px">黑名单触发关键词
+        <input id="gm_blacklist_keywords" placeholder="广告,刷屏" style="width:100%;box-sizing:border-box;margin-top:4px">
+      </label>
+    </div>
+
+    <div class="hint" style="margin:16px 0 6px;color:#c9d1d9">欢迎语</div>
+    <textarea id="gm_welcome" rows="3" placeholder="欢迎 {at} 加入 {group_name}～" style="width:100%;box-sizing:border-box"></textarea>
+    <div class="hint" style="margin-top:6px;line-height:1.8">
+      变量：{nick} 昵称｜{qq} QQ 号｜{group} 群号｜{group_name} 群名称｜{bot} 机器人昵称｜{date} 日期｜{time} 时间｜{at} @文本
+    </div>
+
+    <div class="hint" style="margin:16px 0 6px;color:#c9d1d9">功能开关</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button id="gm_auto_btn" onclick="gmToggle('gm_auto_approve')">自动通过：加载中</button>
+      <button id="gm_verify_btn" onclick="gmToggle('gm_verify')">进群验证：加载中</button>
+      <button id="gm_kick_btn" onclick="gmToggle('gm_kick_enabled')">踢人指令：加载中</button>
+      <button id="gm_blk_btn" onclick="gmToggle('gm_blacklist_kick')">黑名单踢出：加载中</button>
+      <button id="gm_mute_btn" onclick="gmToggle('gm_mute_enabled')">禁言指令：加载中</button>
+      <button id="gm_silent_btn" onclick="gmToggle('gm_silent')">禁止闲聊：加载中</button>
+    </div>
+    <div class="hint" style="margin-top:8px">禁止闲聊：开启后管理群内只执行管理员指令，不回复普通成员；巡查、验证仍生效。</div>
+
+    <div style="display:flex;gap:8px;align-items:center;margin-top:14px">
+      <button onclick="saveGM()">保存设置</button>
+      <span class="msg" id="gmmsg"></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 style="font-size:15px;color:#e6e6e6;margin:0 0 8px">AI 巡查</h2>
+    <div class="hint">刷屏检测 + AI 违规判断，超级管理员不受限制。</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:12px">
+      <label style="color:#8b93a5;font-size:12px">刷屏阈值（N 条/分钟）
+        <input id="gm_patrol_rate" type="number" min="2" max="100" style="width:100%;box-sizing:border-box;margin-top:4px">
+      </label>
+      <label style="color:#8b93a5;font-size:12px">刷屏禁言（分钟）
+        <input id="gm_patrol_mute_min" type="number" min="1" max="1440" style="width:100%;box-sizing:border-box;margin-top:4px">
+      </label>
+      <label style="color:#8b93a5;font-size:12px">AI 上下文条数
+        <input id="gm_ai_context" type="number" min="0" max="30" style="width:100%;box-sizing:border-box;margin-top:4px">
+      </label>
+      <label style="color:#8b93a5;font-size:12px">AI 判违规动作
+        <select id="gm_ai_action" style="width:100%;box-sizing:border-box;margin-top:4px">
+          <option value="warn">警告</option><option value="mute">禁言</option>
+        </select>
+      </label>
+    </div>
+    <label style="color:#8b93a5;font-size:12px;display:block;margin-top:10px">刷屏警告文案（{nick} {minute}）
+      <textarea id="gm_patrol_warn" rows="2" placeholder="检测到刷屏，已禁言 {minute} 分钟，请注意发言频率。" style="width:100%;box-sizing:border-box;margin-top:4px"></textarea>
+    </label>
+    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;align-items:center">
+      <button id="gm_patrol_btn" onclick="gmToggle('gm_patrol_enabled')">刷屏巡查：加载中</button>
+      <button id="gm_ai_btn" onclick="gmToggle('gm_ai_patrol')">AI 违规判断：加载中</button>
+      <button onclick="saveGM()">保存巡查设置</button>
+      <span class="msg" id="gmpmsg"></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 style="font-size:15px;color:#e6e6e6;margin:0 0 8px">关键词规则</h2>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px">
+      <label style="color:#8b93a5;font-size:12px">违规撤回关键词（逗号分隔）
+        <input id="gm_recall_keywords" placeholder="加群,代练,博彩" style="width:100%;box-sizing:border-box;margin-top:4px">
+      </label>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center">
+      <button id="gm_recall_btn" onclick="gmToggle('gm_recall_enabled')">违规关键词撤回：加载中</button>
+    </div>
+    <div class="hint" style="margin:14px 0 6px;color:#c9d1d9">关键词频率限制</div>
+    <table style="width:100%;border-collapse:collapse;font-size:13px">
+      <thead><tr style="color:#8b93a5;text-align:left">
+        <th style="width:52px;padding:6px">ID</th><th>关键词</th><th style="width:110px">窗口（秒）</th><th style="width:100px">允许条数</th><th style="width:60px">操作</th>
+      </tr></thead>
+      <tbody id="kl_body"></tbody>
+    </table>
+    <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
+      <button onclick="klAdd()">添加一条</button>
+      <button onclick="saveGM()">保存关键词设置</button>
+      <span class="msg" id="gmkmsg"></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 style="font-size:15px;color:#e6e6e6;margin:0 0 8px">验证题库</h2>
+    <div class="hint">进群随机抽一题，答错 2 次或超时移出。</div>
+    <table style="width:100%;border-collapse:collapse;margin-top:12px;font-size:13px">
+      <thead><tr style="color:#8b93a5;text-align:left">
+        <th style="width:52px;padding:6px">ID</th><th>问题</th><th style="width:170px">答案</th><th style="width:60px">操作</th>
+      </tr></thead>
+      <tbody id="q_body"></tbody>
+    </table>
+    <div style="display:flex;gap:8px;margin-top:8px;align-items:center;flex-wrap:wrap">
+      <button onclick="qAdd()">添加一题</button>
+      <button onclick="saveQuestions()">保存题库</button>
+      <span class="msg" id="qmsg"></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 style="font-size:15px;color:#e6e6e6;margin:0 0 8px">群黑名单</h2>
+    <div class="hint">独立于「超级管理员 → 黑名单」：这里只影响进群、自动踢和拉黑，不影响 AI 回复。</div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:12px 0">
+      <input id="bl_qq" placeholder="QQ号" style="width:150px">
+      <input id="bl_nick" placeholder="昵称（可选）" style="width:170px">
+      <button onclick="blAdd()">添加/修改</button>
+      <span class="msg" id="blmsg"></span>
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-size:13px">
+      <thead><tr style="color:#8b93a5;text-align:left">
+        <th style="padding:6px;width:56px">头像</th><th>QQ</th><th>昵称</th><th style="width:140px">操作</th>
+      </tr></thead>
+      <tbody id="bl_body"></tbody>
+    </table>
+  </div>
+</div>
+
+<div id="bili" class="hidden">
+  <div class="card">
+    <h2 style="font-size:15px;color:#e6e6e6;margin:0 0 4px">B站账号实况</h2>
+    <div style="color:#f87171;font-size:12px;margin-bottom:10px">⚠️ 登录态自动化，可能被限制评论/私信，严重会封号，请用小号。</div>
+    <div id="biliacct_status" class="hint" style="font-size:14px;color:#e6e6e6">未登录</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0">
+      <button onclick="biliAcctQr()" style="background:#2563eb">扫码登录</button>
+      <button onclick="biliAcctQr(true)" style="background:#0e7490">刷新二维码</button>
+      <button onclick="biliAcctPoll()">刷新状态</button>
+    </div>
+    <details style="margin:6px 0">
+      <summary style="color:#8b93a5;font-size:12px;cursor:pointer">扫码失败？用 Cookie 登录</summary>
+      <div class="hint" style="margin:6px 0">浏览器登录 bilibili.com → F12 → Application → Cookies → 复制 SESSDATA、bili_jct、DedeUserID</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <input id="biliacct_sess" placeholder="SESSDATA" style="flex:2;min-width:160px">
+        <input id="biliacct_jct" placeholder="bili_jct" style="flex:1;min-width:120px">
+        <input id="biliacct_uid" placeholder="DedeUserID(数字)" style="width:120px">
+        <button onclick="biliAcctCookies()">保存 Cookie</button>
+      </div>
+    </details>
+    <div id="biliacct_qrbox" style="display:none;text-align:center"><img id="biliacct_qr" style="width:220px;height:220px;background:#fff;padding:6px;border-radius:8px"></div>
+    <div class="hint" style="margin:8px 0">今日：评论 <span id="biliacct_cdone">0</span> · 点赞 <span id="biliacct_ldone">0</span> · 私信 <span id="biliacct_ddone">0</span> · 风控：<span id="biliacct_risk">无</span></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0">
+      <button onclick="biliAcctBrowse(true)" style="background:#0e7490">刷一次（预览）</button>
+      <button onclick="biliAcctBrowse(false)" style="background:#16a34a">刷一次并互动</button>
+      <button onclick="biliAcctDm()" style="background:#7c3aed">私信测试</button>
+      <button onclick="biliAcctLogs()" style="background:#334155">刷新日志</button>
+    </div>
+    <div class="msg" id="biliacct_msg"></div>
+    <div id="biliacct_logs" class="hint" style="margin-top:8px">日志加载中…</div>
+  </div>
+
+  <div class="card">
+    <h2 style="font-size:14px;color:#8b93a5;margin:0 0 8px">互动设置</h2>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0">
+      <input id="biliacct_mid" placeholder="超管 B 站 mid（纯数字）" style="width:130px">
+      <input id="biliacct_uname" placeholder="超管 B 站昵称（@用）" style="width:150px">
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0">
+      <span class="hint">每天评论</span><input id="biliacct_cmax" type="number" min="0" max="10" style="width:60px">
+      <span class="hint">每天点赞</span><input id="biliacct_lmax" type="number" min="0" max="50" style="width:60px">
+      <button onclick="biliAcctSave()">保存</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 style="font-size:14px;color:#8b93a5;margin:0 0 8px">AI 自动学习</h2>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+      <button id="bili_auto_en" onclick="biliToggle('bili_auto_enabled')">加载中</button>
+      <button id="bili_share" onclick="biliToggle('bili_share_super')">加载中</button>
+      <button id="bili_pro" onclick="biliToggle('bili_proactive_enabled')">加载中</button>
+      <span style="color:#9aa4b8;font-size:13px">记忆≥</span>
+      <input id="bili_pro_min" type="number" min="1" max="100" style="width:70px">
+      <span style="color:#9aa4b8;font-size:13px">条才主动</span>
+      <span style="color:#9aa4b8;font-size:13px">每天</span>
+      <input id="bili_auto_start" type="time" style="width:120px">
+      <span style="color:#9aa4b8">到</span>
+      <input id="bili_auto_end" type="time" style="width:120px">
+      <span style="color:#9aa4b8;font-size:13px">最多</span>
+      <input id="bili_auto_max" type="number" min="1" max="20" style="width:70px">
+      <span style="color:#9aa4b8;font-size:13px">条</span>
+    </div>
+    <label style="color:#8b93a5;font-size:12px;display:block">分享到群（留空=只发超管）
+      <input id="bili_auto_group" placeholder="群号" style="width:100%;box-sizing:border-box;margin-top:4px">
+    </label>
+    <label style="color:#8b93a5;font-size:12px;display:block;margin-top:8px">学习主题（逗号分隔，轮换）
+      <input id="bili_auto_topics" placeholder="机器学习,前端,历史" style="width:100%;box-sizing:border-box;margin-top:4px">
+    </label>
+  </div>
+
+  <div class="card">
+    <h2 style="font-size:14px;color:#8b93a5;margin:0 0 8px">基础解析</h2>
+    <div class="hint">发 BV 号/视频链接解析、B站热门、B站学习 主题、笔记 关键词。</div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:10px 0">
+      <button id="bili_en" onclick="biliToggle('bili_enabled')">加载中</button>
+      <button id="bili_all" onclick="biliToggle('bili_allow_all')">加载中</button>
+      <span style="color:#9aa4b8;font-size:13px">每次学习视频数</span>
+      <input id="bili_count" type="number" min="1" max="5" style="width:70px">
+      <button onclick="saveBili()">保存</button>
+      <span class="msg" id="bilimsg"></span>
+    </div>
+  </div>
+</div>
+
+<div id="gr" class="hidden">
+  
+  
+  <div class="card">
+    <h2 style="font-size:14px;color:#8b93a5;margin:0 0 8px">音乐分享</h2>
+    <div class="hint">用户 @机器人 说「播放 歌名」或「来一首 歌名」时，会自动搜索并发送可直接收听的链接；如果是会员/版权歌曲会说明失败。私聊直接说也可以。</div>
+    <div style="margin-top:10px"><button id="musicbtn" onclick="toggleMusic()">音乐分享：加载中</button></div>
+  </div>
+  <div class="card">
+    <h2 style="font-size:14px;color:#8b93a5;margin:0 0 8px">群聊回复设置</h2>
+    <div class="hint" id="grhint">用户 @ 或触发关键词后，开始与这个人持续对话：接话时间内没继续聊就沉默；聊天中每条都会刷新计时。频率限制每分钟回复条数。</div>
+    <div style="display:flex;gap:8px;margin:10px 0;align-items:center;flex-wrap:wrap">
+      <span style="color:#9aa4b8;font-size:13px">接话时间</span>
+      <input id="grsecs" type="number" min="30" style="width:100px"> <span style="color:#9aa4b8;font-size:13px">秒</span>
+      <span style="color:#9aa4b8;font-size:13px;margin-left:6px">频率</span>
+      <input id="grcap" type="number" min="1" style="width:80px"> <span style="color:#9aa4b8;font-size:13px">条/分钟</span>
+      <button onclick="saveGRConfig()">保存</button>
+    </div>
+    <div style="display:flex;gap:8px;margin:10px 0;align-items:center;flex-wrap:wrap">
+      <span style="color:#9aa4b8;font-size:13px">最多同时接话人数</span>
+      <input id="gramax" type="number" min="1" max="20" style="width:80px">
+      <button id="thriftbtn" onclick="toggleThrift()">省流模式：加载中</button>
+      <button id="atreplybtn" onclick="toggleAtReply()">被@时回复@对方：加载中</button>
+      <span class="hint">省流模式：只回 @/关键词/接话名单，且固定只发一条消息</span>
+    </div>
+    <div class="msg" id="grmsg"></div>
+  </div>
+  <div class="card">
+    <h2 style="font-size:14px;color:#8b93a5;margin:0 0 8px">当前接话中的用户（临时数据）</h2>
+    <div class="hint">这些是触发过 @/关键词、正在接话窗口内的用户。到期自动删除（每 3 分钟自检一次清理）。</div>
+    <div style="margin:8px 0"><button onclick="loadConvos()">刷新列表</button></div>
+    <div id="convlist"></div>
+  </div>
+  <div class="card">
+    <h2 style="font-size:14px;color:#8b93a5;margin:0 0 8px">群列表（来自白名单）</h2>
+    <div class="hint">点「一直接话」后，该群所有消息都会被回复（不用 @/关键词），且不受群回复间隔限制，每分钟最多 10 条；再点一次关闭。</div>
+    <div id="grlist" style="margin-top:8px"></div>
+  </div>
+</div>
+
+<div id="stk" class="hidden">
+  <div class="card">
+    <h2 style="font-size:14px;color:#8b93a5;margin:0 0 8px">表情包设置</h2>
+    <div class="hint">机器人回复时按概率附带一张随机表情包（概率 0 = 关闭）。表情包通过本网站公开地址访问，QQ 客户端需要能打开该地址（隧道换地址后需重新上传一张或点保存刷新）。</div>
+    <div style="display:flex;gap:8px;align-items:center;margin:10px 0;flex-wrap:wrap">
+      <span style="color:#9aa4b8;font-size:13px">附带概率</span>
+      <input id="stkprob" type="number" min="0" max="100" style="width:80px">
+      <span style="color:#9aa4b8;font-size:13px">%</span>
+      <button onclick="saveStickerProb()">保存</button>
+    </div>
+    <div style="display:flex;gap:8px;margin:10px 0;align-items:center;flex-wrap:wrap">
+      <span style="color:#9aa4b8;font-size:13px">选表情方式</span>
+      <button id="skmrandom" onclick="setStickerMode('random')">随机</button>
+      <button id="skmsmart" onclick="setStickerMode('smart')">智能匹配</button>
+    </div>
+    <div style="display:flex;gap:8px;margin:10px 0;align-items:center;flex-wrap:wrap">
+      <button onclick="installStickerPack()">一键获取群主表情包</button>
+      <span class="hint">从群主打包好的表情库一键导入，自动去重（不会覆盖你已有的）</span>
+    </div>
+    <div class="msg" id="stkmsg"></div>
+    <div class="hint" id="stkbase"></div>
+    <div style="border-top:1px solid #1f242e;margin-top:10px;padding-top:10px">
+      <div class="hint" style="margin-bottom:6px">共享表情库：点一下从官方中心同步整套表情包，地址已内置，无需填写。</div>
+      <div class="hint" id="stkpackinfo" style="margin-bottom:6px">加载中…</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <input id="stkpackbase" value="https://xrzs.cloud" readonly style="flex:2;min-width:180px;opacity:.8">
+        <button onclick="importStickerPack()">从中心库同步</button>
+      </div>
+      <div style="margin-top:6px"><button onclick="repairStickers()" style="background:#0e7490">修复未登记的表情</button></div>
+      <div class="packbar" id="stkpackbar"><div id="stkpackfill"></div></div>
+      <div class="msg" id="stkpackmsg"></div>
+    </div>
+  </div>
+  <div class="card">
+    <h2 style="font-size:14px;color:#8b93a5;margin:0 0 8px">表情包库（上传）</h2>
+    <div style="display:flex;gap:8px;margin:10px 0;flex-wrap:wrap;align-items:center">
+      <input id="stkfile" type="file" accept="image/*" multiple>
+      <button onclick="uploadSticker()">上传</button>
+      <button onclick="uploadStickerMany()" style="background:#0e7490">批量上传</button>
+    </div>
+    <div class="hint">批量上传：一次选中多张图片（支持 png/jpg/gif/webp，每张 ≤2MB）。</div>
+    <div style="display:flex;gap:8px;margin:10px 0;flex-wrap:wrap;align-items:flex-start">
+      <textarea id="stkurls" placeholder="也可以粘图片直链，一行一个（http/https）" rows="3" style="flex:1;min-width:240px;background:#0b0d11;color:#e6e6e6;border:1px solid #2a2f3a;border-radius:8px;padding:9px;box-sizing:border-box"></textarea>
+      <button onclick="addStickerUrls()" style="background:#0e7490">导入链接</button>
+    </div>
+    <div id="stklist"></div>
+  </div>
+</div>
+
+<div id="end" class="hidden">
+  <div class="card">
+    <h2 style="font-size:14px;color:#8b93a5;margin:0 0 8px">结束语删除接话</h2>
+    <div class="hint">用户在群里说了下面的触发词时，机器人立即结束与他的接话（不再追着聊），并发送"最后一句"。可自定义触发词与最后一句。</div>
+    <div style="margin:10px 0"><button id="endtoggle" onclick="toggleEnd()">加载中…</button></div>
+    <div style="display:flex;gap:8px;margin:10px 0;flex-wrap:wrap;align-items:center">
+      <span style="color:#9aa4b8;font-size:13px">最后一句</span>
+      <input id="endreply" placeholder="如：好的，那我退下了（留空则不发）" style="flex:1;min-width:150px">
+      <button onclick="saveEndReply2()">保存</button>
+    </div>
+    <div class="msg" id="endmsg"></div>
+  </div>
+  <div class="card">
+    <h2 style="font-size:14px;color:#8b93a5;margin:0 0 8px">触发词（消息包含任意一个即触发）</h2>
+    <div style="display:flex;gap:8px;margin:10px 0">
+      <input id="endinput" placeholder="新增触发词（≤30字）" style="flex:1">
+      <button onclick="addEndPhrase()">添加</button>
+    </div>
+    <div id="endlist"></div>
+  </div>
+</div>
+
+<div id="rate" class="hidden">
+  <div class="card">
+    <h2 style="font-size:14px;color:#8b93a5;margin:0 0 8px">分段回复</h2>
+    <div class="hint">把一次回复拆成几条消息发出去，像真人连发。省流模式开启时强制只发 1 条。</div>
+    <div style="margin:14px 0 6px;color:#9aa4b8;font-size:13px">回复方式</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button id="segfixed" onclick="setSegMode('fixed')">固定条数</button>
+      <button id="segrandom" onclick="setSegMode('random')">随机条数</button>
+    </div>
+    <div class="hint" style="margin-top:6px">固定：每次都发一样多；随机：在「最少 ~ 最多」之间随机。</div>
+    <div class="memgrid" style="margin-top:14px">
+      <label id="segfixedwrap">固定条数（条）<input id="segfixedn" type="number" min="1" max="10"></label>
+      <label id="segrandwrap1">随机最少（条）<input id="segmin" type="number" min="1" max="10"></label>
+      <label id="segrandwrap2">随机最多（条）<input id="segmax" type="number" min="1" max="10"></label>
+    </div>
+    <div style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <button onclick="saveSegConfig()">保存分段设置</button>
+      <span class="msg" id="segmsg"></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 style="font-size:14px;color:#8b93a5;margin:0 0 8px">发送节奏</h2>
+    <div class="hint">控制"等多久才发"。数值越大越像真人，太大回复会显得慢。</div>
+    <div class="memgrid" style="margin-top:14px">
+      <label>首句延迟（毫秒）<input id="segfirst" type="number" min="0" max="10000"></label>
+      <label>消息间隔（毫秒）<input id="segdelay" type="number" min="0" max="10000"></label>
+      <label>表情包延迟（毫秒）<input id="segsticker" type="number" min="0" max="10000"></label>
+    </div>
+    <div class="hint" style="margin-top:8px">1000 毫秒 = 1 秒。推荐：首句 300、间隔 600、表情包 800。</div>
+    <div style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <button onclick="saveSegTiming()">保存节奏设置</button>
+      <span class="msg" id="segmsg2"></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 style="font-size:14px;color:#8b93a5;margin:0 0 8px">每个群的回复频率</h2>
+    <div class="hint">防止回太快被 QQ 判定为机器人：给每个群单独限制「每分钟最多几条」和「两条之间至少隔几秒」。没设置的群用默认值。</div>
+    <div class="hint" id="ratedefault"></div>
+    <div class="hint" style="margin-top:6px">群号 ｜ 每分钟最多回几条 ｜ 两条之间至少隔几秒（留空 = 用默认）</div>
+    <div id="ratelist"></div>
+  </div>
+</div>
+
+<div id="bored" class="hidden">
+  <div class="card">
+    <h2 style="font-size:14px;color:#8b93a5;margin:0 0 8px">无聊模式</h2>
+    <div class="hint">群聊多久没有新消息后，大肥鱼会主动发一段"废话文学"来活跃气氛（内容都是方便别人接话的问句）。只在白名单群生效。</div>
+    <div style="margin:12px 0">
+      <button id="boredbtn" onclick="toggleBored()">加载中…</button>
+      <span id="boredstate" style="margin-left:10px;color:#9aa4b8;font-size:13px"></span>
+    </div>
+    <div style="display:flex;gap:8px;margin:10px 0;align-items:center;flex-wrap:wrap">
+      <span style="color:#9aa4b8;font-size:13px">触发方式</span>
+      <button id="btf" onclick="setBoredTimeMode('fixed')">固定间隔</button>
+      <button id="btr" onclick="setBoredTimeMode('random')">随机区间</button>
+    </div>
+    <div style="display:flex;gap:8px;margin:10px 0;align-items:center;flex-wrap:wrap">
+      <span style="color:#9aa4b8;font-size:13px">固定间隔</span>
+      <input id="boredfixed" type="number" min="1" style="width:80px">
+      <span style="color:#9aa4b8;font-size:13px">分钟</span>
+      <span style="color:#6b7280;font-size:12px">（固定模式生效）</span>
+    </div>
+    <div style="display:flex;gap:8px;margin:10px 0;align-items:center;flex-wrap:wrap">
+      <span style="color:#9aa4b8;font-size:13px">随机触发</span>
+      <input id="boredmin" type="number" min="1" style="width:80px">
+      <span style="color:#9aa4b8;font-size:13px">~</span>
+      <input id="boredmax" type="number" min="1" style="width:80px">
+      <span style="color:#9aa4b8;font-size:13px">分钟</span>
+      <span style="color:#9aa4b8;font-size:13px;margin-left:6px">最小间隔</span>
+      <input id="boredfloor" type="number" min="1" style="width:80px">
+      <span style="color:#9aa4b8;font-size:13px">分钟</span>
+      <button onclick="saveBoredInterval()">保存</button>
+    </div>
+    <div style="display:flex;gap:8px;margin:10px 0;align-items:center">
+      <span style="color:#9aa4b8;font-size:13px">语料来源</span>
+      <button id="modepool" onclick="setBoredMode('pool')">静态语料</button>
+      <button id="modeai" onclick="setBoredMode('ai')">AI 自创</button>
+    </div>
+    <div class="msg" id="boredmsg"></div>
+  </div>
+  <div class="card">
+    <h2 style="font-size:14px;color:#8b93a5;margin:0 0 8px">静态语料库</h2>
+    <div class="hint">静态模式下随机从这里选一条发；AI 自创模式下忽略这里。可自由增删。</div>
+    <div style="display:flex;gap:8px;margin:10px 0">
+      <input id="blinput" placeholder="新增一句废话文学（≤100字）" style="flex:1">
+      <button onclick="addBoredLine()">添加</button>
+    </div>
+    <div id="bllist"></div>
+  </div>
+</div>
+
+<footer style="text-align:center;color:#4b5563;font-size:12px;line-height:1.9;padding:18px 0 8px">
+  本源码完全免费发布，请勿购买｜作者 QQ：2844642318｜交流群：243625638
+</footer>
+</main>
+<script>window.__FP_BASE__ = "__BASE__";</script>
+<script src="__BASE__/web/js/app.js"></script>
+</body></html>

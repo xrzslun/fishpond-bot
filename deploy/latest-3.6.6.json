@@ -1,0 +1,8 @@
+{
+  "version": "3.6.6",
+  "date": "2026-10-30 02:25",
+  "notes": "3.6.6 更新：自动补齐 ffmpeg 依赖——启动时检测不到 ffmpeg 且系统有免密 sudo，会自动尝试安装（apt/dnf/apk），装好后语音可转 mp3；若装不上会自动退化为纯 Python 去开头提示音，不影响使用。安装脚本与自检脚本也加了 ffmpeg 检查。",
+  "url": "https://xrzs.cloud/updates/bot.py",
+  "sha256": "1586412d65afd279ae5e433703f7d713a28bd178b1c80ed19efecb77cdceffaa",
+  "min_version": ""
+}

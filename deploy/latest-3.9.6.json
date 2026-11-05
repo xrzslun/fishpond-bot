@@ -1,0 +1,8 @@
+{
+  "version": "3.9.6",
+  "date": "2026-11-01 21:26",
+  "notes": "3.9.6 更新：修复私聊消息不回复的问题（回复生成阶段变量错误导致异常），群聊不受影响；建议 3.9.5 用户尽快升级。",
+  "url": "https://xrzs.cloud/updates/bot.py",
+  "sha256": "3f87cd9ac137c13276c9cfae82c8211c563a46b5a85633bb9068ceaf628b5c3f",
+  "min_version": ""
+}

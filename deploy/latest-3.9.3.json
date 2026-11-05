@@ -1,0 +1,8 @@
+{
+  "version": "3.9.3",
+  "date": "2026-10-31 15:26",
+  "notes": "3.9.3 更新：修复「一键获取群主表情包」在部分部署上导入失败（16MB 包同步下载超时，代理返回 HTML 导致 JSON 解析报错）——改为后台导入 + 进度轮询，下载超时放宽到 300 秒，前端会显示「新增 X 张 / 跳过 Y 张」。",
+  "url": "https://xrzs.cloud/updates/bot.py",
+  "sha256": "5e1fbcbd9ca8d6b8ffa26c50390a93882cb02d6aca6f83dbf9fb5d36455ebaf0",
+  "min_version": ""
+}

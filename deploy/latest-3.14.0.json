@@ -1,0 +1,9 @@
+{
+  "version": "3.14.0",
+  "date": "2026-11-03 04:08",
+  "notes": "3.14.0 更新：①状态页新增「先看这里」新手引导：一键体检机器人/QQ/AI 模型/服务器状态，用大白话告诉你怎么处理；②后台文案去掉专业术语（NapCat→QQ连接、Token→用量统计、SSH端口等），明确提示「网页就是后台，不用懂服务器和 IP」；③新增遇到问题的自助排查提示。",
+  "url": "https://xrzs.cloud/updates/bot.py",
+  "sha256": "e94dabe976e84302839a11ebdb7ed1e46dba924429ba6df6f91b766eebf4d68e",
+  "min_version": "",
+  "type": "file"
+}

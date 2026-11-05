@@ -1,0 +1,9 @@
+{
+  "version": "3.14.5",
+  "date": "2026-11-03 04:23",
+  "notes": "3.14.5 更新：清理状态页新手提示里的多余说明文案。",
+  "url": "https://xrzs.cloud/updates/bot.py",
+  "sha256": "72ce86c51ee85fe19e6383b739b74f337ad0429fcae8ae1c3059948688a51af2",
+  "min_version": "",
+  "type": "file"
+}

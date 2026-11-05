@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FishPond · 把 AI 养在自己的 QQ 里</title>
+<meta name="description" content="FishPond 是一个自托管的 QQ 群聊 AI 机器人：多套人格、语音对话、超级管理员、黑名单、一键更新，全部跑在你自己的服务器上。">
+<style>
+:root{
+  --bg:#07090d; --panel:#0d1117; --panel2:#11161f; --line:#1d2430; --line2:#28303d;
+  --text:#e8edf5; --muted:#8b96a8; --dim:#5b6675;
+  --acc:#2dd4bf; --acc2:#6366f1; --grad:linear-gradient(120deg,#2dd4bf,#60a5fa 55%,#818cf8);
+  --radius:18px;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;-webkit-font-smoothing:antialiased;line-height:1.6;overflow-x:hidden}
+a{color:inherit;text-decoration:none}
+.wrap{max-width:1120px;margin:0 auto;padding:0 24px}
+.grad{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+
+/* nav */
+nav{position:sticky;top:0;z-index:50;backdrop-filter:blur(14px);background:rgba(7,9,13,.72);border-bottom:1px solid rgba(255,255,255,.06)}
+.nav{display:flex;align-items:center;justify-content:space-between;height:64px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:18px;letter-spacing:.2px}
+.brand svg{width:26px;height:26px}
+.navlinks{display:flex;gap:28px;font-size:14px;color:var(--muted)}
+.navlinks a:hover{color:var(--text)}
+.navcta{display:flex;gap:10px;align-items:center}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:12px;padding:11px 20px;font-size:14px;font-weight:600;border:1px solid transparent;cursor:pointer;transition:.2s transform,.2s box-shadow,.2s background}
+.btn:hover{transform:translateY(-1px)}
+.btn-primary{background:var(--grad);color:#04121a;box-shadow:0 8px 30px rgba(45,212,191,.25)}
+.btn-primary:hover{box-shadow:0 12px 40px rgba(45,212,191,.35)}
+.btn-ghost{border-color:var(--line2);background:rgba(255,255,255,.02);color:var(--text)}
+.btn-ghost:hover{background:rgba(255,255,255,.05)}
+
+/* hero */
+header{position:relative;padding:96px 0 72px;overflow:hidden}
+.blob{position:absolute;filter:blur(90px);opacity:.5;border-radius:50%;pointer-events:none}
+.b1{width:520px;height:520px;background:#0ea5a4;top:-180px;left:-120px}
+.b2{width:460px;height:460px;background:#4f46e5;top:-120px;right:-140px;opacity:.35}
+.b3{width:380px;height:380px;background:#0891b2;bottom:-220px;left:38%;opacity:.22}
+.hero{position:relative;text-align:center;max-width:860px;margin:0 auto}
+.badge{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:#a7f3d0;border:1px solid rgba(45,212,191,.28);background:rgba(45,212,191,.08);padding:6px 14px;border-radius:999px;margin-bottom:26px}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--acc);box-shadow:0 0 12px var(--acc)}
+h1{font-size:clamp(38px,7vw,74px);line-height:1.08;letter-spacing:-2px;margin:0 0 22px;font-weight:800}
+.lead{font-size:clamp(16px,2.2vw,20px);color:var(--muted);max-width:640px;margin:0 auto 36px}
+.hero-actions{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+.hero-note{margin-top:18px;font-size:13px;color:var(--dim)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;max-width:640px;margin:48px auto 0}
+.stat{border:1px solid var(--line);background:rgba(13,17,23,.6);border-radius:14px;padding:16px 10px}
+.stat b{display:block;font-size:22px;letter-spacing:-.5px}
+.stat span{font-size:12px;color:var(--dim)}
+
+/* product frame */
+.showcase{position:relative;margin:70px auto 0;max-width:960px}
+.frame{border:1px solid var(--line2);background:linear-gradient(180deg,#0e131b,#0a0e14);border-radius:22px;box-shadow:0 40px 120px rgba(0,0,0,.55);overflow:hidden}
+.frame-top{display:flex;align-items:center;gap:8px;padding:13px 16px;border-bottom:1px solid var(--line)}
+.tl{width:11px;height:11px;border-radius:50%}
+.tl.r{background:#ff5f57}.tl.y{background:#febc2e}.tl.g{background:#28c840}
+.frame-url{margin-left:12px;font-size:12px;color:var(--dim);background:#0b0f15;border:1px solid var(--line);border-radius:8px;padding:4px 10px}
+.frame-body{display:grid;grid-template-columns:190px 1fr;min-height:380px}
+.frame-side{border-right:1px solid var(--line);padding:16px 12px;display:flex;flex-direction:column;gap:6px}
+.side-item{font-size:13px;color:var(--muted);padding:8px 10px;border-radius:8px}
+.side-item.on{background:rgba(45,212,191,.1);color:#99f6e4}
+.side-head{font-size:11px;color:var(--dim);padding:10px 10px 4px;letter-spacing:1px}
+.frame-main{padding:22px;display:flex;flex-direction:column;gap:12px}
+.chat{display:flex;gap:10px;max-width:82%}
+.chat.me{margin-left:auto;flex-direction:row-reverse}
+.avatar{width:30px;height:30px;border-radius:50%;flex:none;background:linear-gradient(135deg,#2dd4bf,#6366f1);display:flex;align-items:center;justify-content:center;font-size:13px;color:#04121a;font-weight:700}
+.chat.me .avatar{background:#2a3242;color:#c7d2fe}
+.bubble{background:#141a24;border:1px solid var(--line);padding:10px 14px;border-radius:14px;font-size:13px;color:#dbe4f0}
+.chat.me .bubble{background:rgba(99,102,241,.16);border-color:rgba(99,102,241,.35)}
+.composer{margin-top:auto;border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:12px;color:var(--dim);display:flex;justify-content:space-between;align-items:center}
+.send{background:var(--grad);color:#04121a;border-radius:8px;padding:5px 12px;font-size:12px;font-weight:700}
+
+/* sections */
+section{padding:84px 0;position:relative}
+.sec-head{text-align:center;max-width:720px;margin:0 auto 48px}
+.sec-tag{font-size:12px;letter-spacing:2px;color:var(--acc);text-transform:uppercase;margin-bottom:12px;font-weight:700}
+h2{font-size:clamp(26px,4vw,40px);letter-spacing:-1px;margin:0 0 14px;font-weight:800}
+.sec-head p{color:var(--muted);margin:0;font-size:16px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.card{border:1px solid var(--line);background:linear-gradient(180deg,rgba(17,22,31,.8),rgba(10,14,20,.6));border-radius:var(--radius);padding:26px;transition:.25s border-color,.25s transform,.25s box-shadow;position:relative;overflow:hidden}
+.card:hover{border-color:rgba(45,212,191,.35);transform:translateY(-3px);box-shadow:0 20px 50px rgba(0,0,0,.35)}
+.card .ico{width:42px;height:42px;border-radius:12px;background:rgba(45,212,191,.1);border:1px solid rgba(45,212,191,.22);display:flex;align-items:center;justify-content:center;margin-bottom:16px;font-size:20px}
+.card h3{font-size:16px;margin:0 0 8px;font-weight:700}
+.card p{margin:0;color:var(--muted);font-size:14px}
+
+/* steps */
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;counter-reset:s}
+.step{border:1px solid var(--line);background:var(--panel);border-radius:var(--radius);padding:24px;position:relative}
+.step:before{counter-increment:s;content:"0" counter(s);position:absolute;top:18px;right:20px;font-size:34px;font-weight:800;color:rgba(255,255,255,.05);letter-spacing:-1px}
+.step h3{margin:0 0 8px;font-size:16px}
+.step p{margin:0;color:var(--muted);font-size:14px}
+.code{margin-top:14px;background:#05070a;border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;color:#a5f3fc;overflow:auto;white-space:pre;line-height:1.7}
+.code .c{color:#64748b}
+
+/* version */
+.version{display:flex;gap:24px;align-items:center;justify-content:space-between;border:1px solid var(--line);background:linear-gradient(120deg,rgba(45,212,191,.07),rgba(99,102,241,.07));border-radius:var(--radius);padding:28px 30px;flex-wrap:wrap}
+.version h3{margin:0 0 6px;font-size:18px}
+.version p{margin:0;color:var(--muted);font-size:14px}
+.vtag{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:#99f6e4;border:1px solid rgba(45,212,191,.3);padding:6px 12px;border-radius:999px;background:rgba(45,212,191,.08)}
+
+/* faq */
+.faq{max-width:820px;margin:0 auto;display:flex;flex-direction:column;gap:10px}
+details{border:1px solid var(--line);background:var(--panel);border-radius:12px;padding:18px 20px}
+summary{cursor:pointer;font-size:15px;font-weight:600;list-style:none;display:flex;justify-content:space-between;align-items:center}
+summary::-webkit-details-marker{display:none}
+summary:after{content:"+";color:var(--acc);font-size:18px}
+details[open] summary:after{content:"−"}
+details p{margin:12px 0 0;color:var(--muted);font-size:14px}
+
+footer{border-top:1px solid var(--line);padding:44px 0 54px;color:var(--dim);font-size:13px}
+.foot{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;align-items:center}
+.foot a{color:var(--muted)}
+.foot a:hover{color:var(--text)}
+
+@media (max-width:900px){
+  .grid,.steps,.stats{grid-template-columns:1fr}
+  .navlinks{display:none}
+  .frame-body{grid-template-columns:1fr}
+  .frame-side{display:none}
+  header{padding:64px 0 40px}
+  section{padding:56px 0}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap nav">
+    <a class="brand" href="/">
+      <svg viewBox="0 0 48 48" fill="none"><path d="M8 24c6-10 16-14 24-10 3 1.5 5 4 6 7-2 8-9 14-18 14-5 0-9-2-12-5 2-1 4-3 5-6-2 1-4 1-5 0Z" fill="url(#g1)"/><circle cx="32" cy="20" r="2" fill="#04121a"/><defs><linearGradient id="g1" x1="8" y1="10" x2="40" y2="38"><stop stop-color="#2dd4bf"/><stop offset=".6" stop-color="#60a5fa"/><stop offset="1" stop-color="#818cf8"/></linearGradient></defs></svg>
+      FishPond
+    </a>
+    <div class="navlinks">
+      <a href="#features">功能</a>
+      <a href="#start">快速开始</a>
+      <a href="#update">更新</a>
+      <a href="#faq">常见问题</a>
+    </div>
+    <div class="navcta">
+      <a class="btn btn-ghost" href="#features">了解功能</a>
+    </div>
+  </div>
+</nav>
+
+<header>
+  <div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div>
+  <div class="wrap">
+    <div class="hero">
+      <span class="badge"><span class="dot"></span> 免费开源 · 自托管 · 数据留在自己服务器</span>
+      <h1>把 AI 养在<br>自己的 <span class="grad">QQ</span> 里</h1>
+      <p class="lead">FishPond 是一套跑在你自己服务器上的 QQ 群聊机器人：会聊天、会发表情、能听懂语音、有人格、听指挥，还支持后台一键更新。</p>
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="#start">开始部署 →</a>
+        <a class="btn btn-ghost" href="#features">查看功能</a>
+      </div>
+      <div class="hero-note">一台 2G 小服务器 + 一个 QQ 小号 + 一个 API Key 就能跑起来</div>
+
+      <div class="stats">
+        <div class="stat"><b>1 核 2G</b><span>最低配置</span></div>
+        <div class="stat"><b>3 步</b><span>完成部署</span></div>
+        <div class="stat"><b>¥0</b><span>软件费用</span></div>
+      </div>
+
+      <div class="showcase">
+        <div class="frame">
+          <div class="frame-top">
+            <span class="tl r"></span><span class="tl y"></span><span class="tl g"></span>
+            <span class="frame-url">fishpond · 管理面板预览</span>
+          </div>
+          <div class="frame-body">
+            <div class="frame-side">
+              <div class="side-head">菜单</div>
+              <div class="side-item on">状态</div>
+              <div class="side-item">机器人</div>
+              <div class="side-item">聊天</div>
+              <div class="side-item">名单</div>
+              <div class="side-item">账号</div>
+            </div>
+            <div class="frame-main">
+              <div class="chat"><div class="avatar">鱼</div><div class="bubble">在的，直接说事情就好～</div></div>
+              <div class="chat me"><div class="avatar">我</div><div class="bubble">大肥鱼在吗</div></div>
+              <div class="chat"><div class="avatar">鱼</div><div class="bubble">今天不想动，躺锅里省力气 🐟</div></div>
+              <div class="composer"><span>输入消息…</span><span class="send">发送</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<section id="features">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-tag">Features</div>
+      <h2>该有的都有，不该管的不管</h2>
+      <p>从一个能接话的小机器人，到一套完整的群聊管理面板。</p>
+    </div>
+    <div class="grid">
+      <div class="card"><div class="ico">🎭</div><h3>多套人格切换</h3><p>傲娇、高冷、舔狗、温柔……想存几套存几套，切换后下一条消息立即生效。</p></div>
+      <div class="card"><div class="ico">🎙</div><h3>语音对话</h3><p>支持豆包 v3 / Edge-TTS 语音回复，也能用本地 Whisper 听懂语音消息，像真人一样聊。</p></div>
+      <div class="card"><div class="ico">👑</div><h3>超级管理员</h3><p>超管消息优先回复、绕过白名单与频率限制；支持舔狗模式、专一模式、怼人模式。</p></div>
+      <div class="card"><div class="ico">🛡</div><h3>名单与黑名单</h3><p>群白名单、QQ 白名单精细控制；黑名单一键拉黑，被拉黑的人发消息机器人完全不回。</p></div>
+      <div class="card"><div class="ico">🧠</div><h3>懂上下文</h3><p>能看懂别人引用的文字和图片，别人互 @ 不插嘴，还能自己判断这条消息该不该接。</p></div>
+      <div class="card"><div class="ico">⚡</div><h3>后台一键更新</h3><p>作者发新版后，后台点「检查更新」按钮变绿，一键下载、校验、重启，数据全部保留。</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="start" style="background:linear-gradient(180deg,rgba(13,17,23,0),rgba(13,17,23,.6),rgba(13,17,23,0))">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-tag">Quick Start</div>
+      <h2>三步，让它住进你的 QQ</h2>
+      <p>没有复杂配置，会复制粘贴命令就行。</p>
+    </div>
+    <div class="steps">
+      <div class="step"><h3>下载并解密</h3><p>联系作者获取加密部署包和解压密码。</p><div class="code">openssl enc -d -aes-256-cbc \
+  -pbkdf2 -iter 200000 \
+  -in qqbot-deploy.tar.gz.enc \
+  -out qqbot-deploy.tar.gz \
+  -pass pass:你的密码</div></div>
+      <div class="step"><h3>一键安装</h3><p>运行安装脚本，按提示选择访问方式。</p><div class="code">tar xzf qqbot-deploy.tar.gz
+cd qqbot-deploy
+sudo bash install.sh</div></div>
+      <div class="step"><h3>扫码上线</h3><p>登录后台 → 账号 → 扫码登录 → 手机 QQ 扫码。</p><div class="code"><span class="c"># 后台地址会自动输出</span>
+https://你的域名/…
+admin / 随机密码</div></div>
+    </div>
+  </div>
+</section>
+
+<section id="update">
+  <div class="wrap">
+    <div class="version">
+      <div>
+        <div class="vtag"><span class="dot"></span> 最新版本</div>
+        <h3 id="vtitle" style="margin-top:12px">正在获取版本…</h3>
+        <p id="vnotes">—</p>
+      </div>
+      <a class="btn btn-ghost" href="#start">如何更新</a>
+    </div>
+  </div>
+</section>
+
+<section id="faq">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-tag">FAQ</div>
+      <h2>常见问题</h2>
+    </div>
+    <div class="faq">
+      <details open><summary>机器人不回消息怎么办？</summary><p>依次检查：后台状态是否在线 → 群是否在白名单 → 是否 @ 了它或说了关键词 → 回复频率是否被限频（日志里会显示「限频丢弃」）。</p></details>
+      <details><summary>会不会封号？</summary><p>第三方 QQ 机器人都有风控风险。建议用小号、控制回复频率、不要频繁拉群、不发违规内容。</p></details>
+      <details><summary>需要什么配置的服务器？</summary><p>Ubuntu 20.04+ / Debian 11+，1 核 2G 起步；想用本地语音识别建议 2G 以上并开 swap。香港或海外服务器免备案。</p></details>
+      <details><summary>以后更新麻烦吗？</summary><p>不麻烦。后台「机器人 → 设置 → 检查更新」，有新版按钮会变绿，点一下自动更新重启，数据全保留。</p></details>
+      <details><summary>收费吗？</summary><p>完全免费开源，谨防有人拿它卖钱。</p></details>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap foot">
+    <div>FishPond · 免费开源 · 请勿购买</div>
+    <div>作者 QQ 2844642318 ｜ 交流群 243625638</div>
+    <div><a href="#start">快速开始</a> · <a href="#faq">常见问题</a></div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  // 版本信息
+  fetch('/updates/latest.json',{cache:'no-store'}).then(function(r){return r.json()}).then(function(d){
+    document.getElementById('vtitle').textContent = 'FishPond ' + (d.version||'');
+    var notes = (d.notes||'') + (d.date ? ' · ' + d.date : '');
+    document.getElementById('vnotes').textContent = notes || '—';
+  }).catch(function(){
+    document.getElementById('vtitle').textContent = 'FishPond';
+    document.getElementById('vnotes').textContent = '版本信息获取失败';
+  });
+})();
+</script>
+</body>
+</html>

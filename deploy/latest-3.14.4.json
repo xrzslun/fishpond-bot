@@ -1,0 +1,9 @@
+{
+  "version": "3.14.4",
+  "date": "2026-11-03 04:22",
+  "notes": "3.14.4 更新：①「运维」卡片移到「机器人 → 设置 → 版本与更新」下方；②「遇到问题怎么办」去掉多余说明文案。",
+  "url": "https://xrzs.cloud/updates/bot.py",
+  "sha256": "11919ca76ead727793402b5c1f934dd2a64e67f2e977ccfc113352c306378cbe",
+  "min_version": "",
+  "type": "file"
+}

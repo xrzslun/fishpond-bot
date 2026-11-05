@@ -1,0 +1,8 @@
+{
+  "version": "3.6.5",
+  "date": "2026-10-30 02:21",
+  "notes": "3.6.5 更新：语音开头提示音裁剪不再依赖 ffmpeg——没装 ffmpeg 的机器会改用纯 Python 处理，同样能去掉开头的「滴咚」（之前没装 ffmpeg 会直接回退原始音频，所以更新了也没效果）。语音页新增「音视频处理」状态提示，启动日志会打印版本与 ffmpeg 状态，方便排查。",
+  "url": "https://xrzs.cloud/updates/bot.py",
+  "sha256": "d4ec696782a0e21a1e95899f9fe3c5ba780a050fb9a713b12b90a91fff7c73c9",
+  "min_version": ""
+}

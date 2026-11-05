@@ -1,0 +1,9 @@
+{
+  "version": "3.11.1",
+  "date": "2026-11-03 03:20",
+  "notes": "3.11.1 更新：①修复「Token 用量」接口报错（500）的问题；②发布流程增加接口冒烟与功能注册校验，减少坏版本流出；③升级自动校验与目录包更新逻辑，升级更稳。",
+  "url": "https://xrzs.cloud/updates/bot.py",
+  "sha256": "3b2b704059b0d3e1c7930734a970e72ab914c83d511c1bdd3059ec1bbafba47a",
+  "min_version": "",
+  "type": "file"
+}
