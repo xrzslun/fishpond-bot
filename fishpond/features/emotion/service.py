@@ -266,11 +266,15 @@ class EmotionMixin:
         now = _dt.datetime.now()
         m = now.hour * 60 + now.minute
         if 450 <= m < 660:
-            return "breakfast", "早饭", "11 点前"
-        if 660 <= m < 840:
-            return "lunch", "午饭", "2 点前"
-        if 1020 <= m < 1260:
-            return "dinner", "晚饭", "9 点前"
+            return "breakfast", "早饭", "11 点前", "done"
+        if 660 <= m < 780:
+            return "lunch", "午饭", "2 点前", "plan"
+        if 780 <= m < 840:
+            return "lunch", "午饭", "2 点前", "done"
+        if 1020 <= m < 1140:
+            return "dinner", "晚饭", "9 点前", "plan"
+        if 1140 <= m < 1260:
+            return "dinner", "晚饭", "9 点前", "done"
         return None
 
     def _meal_pending(self) -> bool:
@@ -318,9 +322,13 @@ class EmotionMixin:
             kind = None
             if slot and self.store.get_setting(f"meal_{slot[0]}_day", "") != day:
                 kind = "meal"
-                meal_name, deadline = slot[1], slot[2]
-                prompt = (f"你是角色本人，想问超级管理员吃没吃{meal_name}。只问一次，口语、自然，"
-                          f"可以提醒别拖过{deadline}，不要催、不要连问、不要提系统。一句即可。")
+                meal_name, deadline, phase = slot[1], slot[2], slot[3]
+                if phase == "plan":
+                    prompt = (f"你是角色本人，想问超级管理员{meal_name}准备吃什么。只问一次，口语、自然，"
+                              f"不要问“吃了没”，不要催、不要连问、不要提系统。一句即可。")
+                else:
+                    prompt = (f"你是角色本人，想问超级管理员吃没吃{meal_name}。只问一次，口语、自然，"
+                              f"可以提醒别拖过{deadline}，不要催、不要连问、不要提系统。一句即可。")
             elif unanswered >= 2:
                 return
             else:
@@ -340,7 +348,10 @@ class EmotionMixin:
                 text = random.choice(["在不在，忙完了没", "今天忙啥呢", "我刚收拾完，歇会儿", "外面天气还行，你那边呢"])
             if any(self._norm_msg(text) == self._norm_msg(x) for x in recent[-8:]):
                 if kind == "meal":
-                    text = f"吃{slot[1]}了没，别拖过{slot[2]}"
+                    if slot and slot[3] == "plan":
+                        text = f"{slot[1]}准备吃点啥"
+                    else:
+                        text = f"吃{slot[1]}了没，别拖过{slot[2]}"
                 else:
                     text = random.choice(["在不在，忙完没", "今天忙啥呢", "刚忙完一阵，歇会儿", "你那边天气咋样"])
             for qq in qqs:
