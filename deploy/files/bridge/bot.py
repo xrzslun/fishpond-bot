@@ -32,7 +32,7 @@ import aiohttp
 import yaml
 from aiohttp import web as aiohttp_web
 
-APP_VERSION = "4.2.4"  # 4.2.4 关系称呼推断
+APP_VERSION = "4.2.5"  # 4.2.5 记忆先检索
 DEFAULT_UPDATE_URL = "https://xrzs.cloud/updates/latest.json"
 
 GAME_PROMPT = """你是《赤月·2039》末世生存文字冒险的叙事引擎与主持人，带玩家进行文字冒险。只用纯文本，不用 Markdown 表格。

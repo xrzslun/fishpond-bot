@@ -113,28 +113,50 @@ class MemoryMixin:
     def memory_prompt(self, uid: str, level: str, query: str = "") -> str:
         if not self.memory_enabled():
             return ""
+        import re as _re
         key = "memory_super_inject" if level == "high" else "memory_normal_inject"
         inj = int(self.store.get_setting(key, "20" if level == "high" else "5") or (20 if level == "high" else 5))
-        limit = 2000 if level == "high" else max(30, inj * 3)
-        candidates = self.store.mem_by_owner(str(uid), None, limit, all_levels=True)
-        # 过滤“机器人配置/后台/关键词”这类非人物记忆，避免 AI 把自己当助手聊设置
         noise = ("关键词", "触发词", "提示词", "后台", "部署", "API", "token", "观察者",
                  "省流模式", "FishPond", "机器人设置", "自动回复", "模型设置", "白名单")
-        candidates = [c for c in candidates if not any(w in (c.get("content") or "") for w in noise)]
-        if not candidates:
-            return ""
-        hits = [i for i in candidates if self.memory_hit(i.get("content", ""), query)]
-        hits.sort(key=lambda i: (0 if i.get("level") == "high" else 1))
+        # 先按关键词全库检索，再补最近记忆，避免记忆多时漏掉关键信息
+        terms = []
+        for chunk in _re.findall(r"[\u4e00-\u9fff]{2,}|[A-Za-z0-9_]{2,}", str(query or "")):
+            if len(chunk) <= 8:
+                terms.append(chunk)
+            if len(chunk) >= 4:
+                terms.extend(chunk[i:i+2] for i in range(len(chunk)-1))
+                terms.extend(chunk[i:i+3] for i in range(len(chunk)-2))
+        terms = list(dict.fromkeys(terms))[:14]
+        hits = self.store.mem_search(str(uid), terms, 300) if terms else []
+        hits = [c for c in hits if not any(w in (c.get("content") or "") for w in noise)]
+        # 词越稀有权重越高，避免“今天”这种高频词把关键信息挤掉
+        counts = {}
+        try:
+            with self.store._conn() as c:
+                for t in terms:
+                    counts[t] = int(c.execute(
+                        "SELECT COUNT(*) FROM memories WHERE owner_qq=? AND content LIKE ?",
+                        (str(uid), f"%{t}%")).fetchone()[0] or 0)
+        except Exception:
+            counts = {}
+        def _score(r):
+            content = str(r.get("content") or "")
+            return sum(1.0 / (1 + counts.get(t, 0)) for t in terms if t in content)
+        hits.sort(key=lambda r: (-_score(r), 0 if r.get("level") == "high" else 1))
         items = hits[:max(1, inj)]
         if len(items) < max(1, inj):
+            recent = self.store.mem_by_owner(str(uid), None, max(30, inj * 3), all_levels=True)
+            recent = [c for c in recent if not any(w in (c.get("content") or "") for w in noise)]
             used_ids = {i["id"] for i in items}
-            for c in candidates:
+            for c in recent:
                 if c["id"] in used_ids:
                     continue
                 items.append(c)
                 used_ids.add(c["id"])
                 if len(items) >= max(1, inj):
                     break
+        if not items:
+            return ""
         try:
             pending = getattr(self, "_pending_mem", {})
             pending[str(uid)] = items
@@ -454,6 +476,21 @@ class ChatStoreMixin:
         args.append(limit)
         with self._conn() as c:
             return [dict(r) for r in c.execute(sql, args).fetchall()]
+
+    def mem_search(self, owner_qq, terms, limit=200):
+        terms = [str(t).strip() for t in (terms or []) if str(t).strip()]
+        if not terms:
+            return []
+        where = " OR ".join(["content LIKE ?"] * len(terms))
+        args = [str(owner_qq)] + [f"%{t}%" for t in terms]
+        with self._conn() as c:
+            rows = c.execute(
+                f"SELECT * FROM memories WHERE owner_qq=? AND ({where})"
+                " ORDER BY CASE WHEN level='high' THEN 0 ELSE 1 END,"
+                " COALESCE(last_used_at, created_at) DESC, use_count DESC, id DESC LIMIT ?",
+                args + [limit],
+            ).fetchall()
+            return [dict(r) for r in rows]
 
     def mem_by_owner(self, owner_qq, level=None, limit=50, all_levels=False):
         with self._conn() as c:
