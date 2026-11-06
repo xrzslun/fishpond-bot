@@ -1259,7 +1259,17 @@ class WorldMixin:
             return
         day = st["day_index"]
         key = "greet_morning_day" if kind == "morning" else "greet_night_day"
-        if str(self.store.get_setting(key, "")) == str(day):
+        # 原子占位：同一天只允许一个任务发，避免并发重复
+        claimed = False
+        try:
+            with self.store._conn() as c:
+                c.execute("INSERT OR IGNORE INTO settings(key,value) VALUES(?,?)", (key, ""))
+                cur = c.execute("UPDATE settings SET value=? WHERE key=? AND value<>?",
+                                (str(day), key, str(day)))
+                claimed = cur.rowcount > 0
+        except Exception as e:
+            log.warning("问候占位失败: %s", e)
+        if not claimed:
             return
         text = "醒了，早。" if kind == "morning" else "困了，先睡，晚安。"
         if kind == "morning":
@@ -1285,14 +1295,23 @@ class WorldMixin:
             except Exception:
                 qq = ""
         if not qq:
+            try:
+                with self.store._conn() as c:
+                    c.execute("UPDATE settings SET value='' WHERE key=?", (key,))
+            except Exception:
+                pass
             return
         try:
             await self.onebot_action("send_msg", {"message_type": "private", "user_id": qq,
                                                   "message": [{"type": "text", "data": {"text": text}}]})
-            self.store.set_setting(key, str(day))
             log.info("作息问候 -> %s: %s", qq, text)
         except Exception as e:
             log.warning("作息问候发送失败: %s", e)
+            try:
+                with self.store._conn() as c:
+                    c.execute("UPDATE settings SET value='' WHERE key=?", (key,))
+            except Exception:
+                pass
 
     def in_world_rest(self) -> bool:
         """世界是否处于休息时段且没被叫醒。"""
