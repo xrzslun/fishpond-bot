@@ -60,6 +60,56 @@ class MemoryMixin:
         g3 = {c[i:i + 3] for i in range(len(c) - 2)}
         return any(g in t for g in g3)
 
+    async def user_address(self, uid: str) -> dict:
+        """从记忆和最近聊天推断：用户怎么叫 AI，AI 该怎么称呼用户。"""
+        import json as _json, time as _time, re as _re
+        key = f"addr_cache_{uid}"
+        try:
+            cached = _json.loads(self.store.get_setting(key, "") or "{}")
+            if cached.get("ts", 0) > _time.time() - 86400 and cached.get("call_user"):
+                return cached
+        except Exception:
+            cached = {}
+        mems = []
+        try:
+            for m in self.store.mem_by_owner(str(uid), None, 25, all_levels=True):
+                c = str(m.get("content") or "").strip()
+                if c:
+                    mems.append(c[:120])
+        except Exception:
+            pass
+        recent = []
+        try:
+            with self.store._conn() as c:
+                recent = [str(r[0]) for r in c.execute(
+                    "SELECT text FROM chat_recent WHERE user_qq=? ORDER BY id DESC LIMIT 15", (str(uid),))]
+        except Exception:
+            pass
+        ctx = ("记忆：\n" + "\n".join("- " + x for x in mems[:25]) + "\n最近聊天：\n" +
+               "\n".join("- " + x for x in recent[:15]))
+        prompt = ("根据下面这个人和角色的互动，推断两件事：\n"
+                  "1. 这个人平时怎么称呼角色（如老婆、宝宝、肥鱼、主人、名字）\n"
+                  "2. 角色应该怎么称呼这个人（如老公、宝贝、你、名字、外号）\n"
+                  "要求：只根据材料推断，不要编；没有明显称呼就用“你”。\n"
+                  "只输出 JSON：{\"user_calls_ai\":\"\",\"call_user\":\"\",\"relation\":\"\"}\n" + ctx)
+        data = {}
+        try:
+            raw = await self.llm_complete("你是关系称呼分析器，只输出 JSON。", prompt,
+                                          max_tokens=100, temperature=0.2, timeout=30)
+            m = _re.search(r"\{.*\}", str(raw or ""), _re.S)
+            data = _json.loads(m.group(0)) if m else {}
+        except Exception as e:
+            log.warning("称呼推断失败: %s", e)
+        out = {"user_calls_ai": str(data.get("user_calls_ai") or "")[:20],
+               "call_user": str(data.get("call_user") or "你")[:20] or "你",
+               "relation": str(data.get("relation") or "")[:20],
+               "ts": _time.time()}
+        try:
+            self.store.set_setting(key, _json.dumps(out, ensure_ascii=False))
+        except Exception:
+            pass
+        return out
+
     def memory_prompt(self, uid: str, level: str, query: str = "") -> str:
         if not self.memory_enabled():
             return ""

@@ -318,25 +318,32 @@ class EmotionMixin:
                 recent = _json.loads(self.store.get_setting("boredom_recent", "[]") or "[]")
             except Exception:
                 recent = []
+            addr = "你"
+            try:
+                if hasattr(self, "user_address"):
+                    a = await self.user_address(str(qqs[0]))
+                    addr = (a.get("call_user") or "你").strip() or "你"
+            except Exception:
+                addr = "你"
             slot = self._meal_slot()
             kind = None
             if slot and self.store.get_setting(f"meal_{slot[0]}_day", "") != day:
                 kind = "meal"
                 meal_name, deadline, phase = slot[1], slot[2], slot[3]
                 if phase == "plan":
-                    prompt = (f"你是角色本人，想问超级管理员{meal_name}准备吃什么。只问一次，口语、自然，"
-                              f"不要问“吃了没”，不要催、不要连问、不要提系统。一句即可。")
+                    prompt = (f"你是角色本人，想问对方（称呼TA为“{addr}”）{meal_name}准备吃什么。只问一次，口语、自然，"
+                              f"不要问“吃了没”，不要催、不要连问、不要提系统、不要叫管理员。一句即可。")
                 else:
-                    prompt = (f"你是角色本人，想问超级管理员吃没吃{meal_name}。只问一次，口语、自然，"
-                              f"可以提醒别拖过{deadline}，不要催、不要连问、不要提系统。一句即可。")
+                    prompt = (f"你是角色本人，想问对方（称呼TA为“{addr}”）吃没吃{meal_name}。只问一次，口语、自然，"
+                              f"可以提醒别拖过{deadline}，不要催、不要连问、不要提系统、不要叫管理员。一句即可。")
             elif unanswered >= 2:
                 return
             else:
                 kinds = ["在不在", "忙什么", "分享小事", "找话题", "撒娇"]
                 kind = random.choice(kinds)
                 prompts = {
-                    "在不在": "你想找超级管理员，但不要总说无聊。问一句在不在/忙完没，自然口语，一句。",
-                    "忙什么": "问超级管理员今天在忙什么，别催回复，自然口语，一句。",
+                    "在不在": f"你想找对方（称呼TA为“{addr}”），但不要总说无聊。问一句在不在/忙完没，自然口语，一句，别叫管理员。",
+                    "忙什么": f"问对方（称呼TA为“{addr}”）今天在忙什么，别催回复，自然口语，一句，别叫管理员。",
                     "分享小事": "分享你刚做的一件生活小事（做饭/收拾/看到什么），一句，别求回复。",
                     "找话题": "抛一个轻松的话题或刚看到的有意思的东西，一句，别问“陪我聊天”。",
                     "撒娇": "用一点撒娇或吐槽的语气说一句，但不要重复“无聊到长蘑菇”，别求陪聊。",
@@ -344,6 +351,7 @@ class EmotionMixin:
                 prompt = prompts[kind]
             text = await self.llm_complete(prompt, "", max_tokens=80, temperature=0.9, timeout=30)
             text = " ".join(str(text or "").split())[:120]
+            text = text.replace("超级管理员", addr).replace("管理员", addr)
             if not text:
                 text = random.choice(["在不在，忙完了没", "今天忙啥呢", "我刚收拾完，歇会儿", "外面天气还行，你那边呢"])
             if any(self._norm_msg(text) == self._norm_msg(x) for x in recent[-8:]):
