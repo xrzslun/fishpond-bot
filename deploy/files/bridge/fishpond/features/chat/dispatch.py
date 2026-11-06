@@ -1107,7 +1107,8 @@ class ChatMixin:
             # 管理群禁止闲聊：只响应超管/授权管理员，普通成员消息直接忽略
             if (mtype == "group" and self.gm_get("gm_silent", str(ev.get("group_id") or ""), "0") == "1"
                     and str(ev.get("group_id") or "") in self.gm_groups()
-                    and not self.gm_kick_allowed(str(user_id))):
+                    and not self.gm_kick_allowed(str(user_id))
+                    and not self.gm_pending(str(user_id), str(ev.get("group_id") or ""))):
                 return
             if await self.handle_verify_reply(ws, ev, mtype, user_text):
                 return
