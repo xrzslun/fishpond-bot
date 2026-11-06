@@ -1012,7 +1012,8 @@ class ChatMixin:
                 if self._loop_guard.get("group:" + _gid, 0) > time.time():
                     log.warning("群 %s 处于防循环保护，跳过处理", _gid)
                     return
-                if self.likely_bot_sender(_gid, str(user_id), str(ev.get("raw_message") or "")):
+                if (self.likely_bot_sender(_gid, str(user_id), str(ev.get("raw_message") or ""))
+                        and not self.gm_pending(str(user_id), _gid)):
                     return
         except Exception:
             pass
