@@ -235,6 +235,8 @@ class EmotionMixin:
         dec = base if is_super else max(1, base // 8)
         self.boredom_set(self.boredom_get() - dec)
         self.store.set_setting("boredom_last_act", str(time.time()))
+        self.store.set_setting("boredom_last_reply", str(time.time()))
+        self.store.set_setting("boredom_unanswered", "0")
 
     async def boredom_loop(self):
         await asyncio.sleep(120)
@@ -248,30 +250,110 @@ class EmotionMixin:
                 if now - last >= 300:
                     self.boredom_set(self.boredom_get() + _r.randint(2, 5))
                     b = self.boredom_get()
-                    if b >= 75:
+                    pending_meal = self._meal_pending()
+                    if b >= 75 or pending_meal:
                         cooldown = getattr(self, "_boredom_sent", 0)
-                        if now - cooldown > 1800:
+                        gap = 1800 if pending_meal else 3600
+                        if now - cooldown > gap:
                             self._boredom_sent = now
                             self.spawn(self.boredom_proactive(), "boredom_proactive")
             except Exception as e:
                 log.warning("无聊值循环失败: %s", e)
             await asyncio.sleep(300)
 
+    def _meal_slot(self):
+        import datetime as _dt
+        now = _dt.datetime.now()
+        m = now.hour * 60 + now.minute
+        if 450 <= m < 660:
+            return "breakfast", "早饭", "11 点前"
+        if 660 <= m < 840:
+            return "lunch", "午饭", "2 点前"
+        if 1020 <= m < 1260:
+            return "dinner", "晚饭", "9 点前"
+        return None
+
+    def _meal_pending(self) -> bool:
+        slot = self._meal_slot()
+        if not slot:
+            return False
+        day = time.strftime("%Y-%m-%d")
+        return self.store.get_setting(f"meal_{slot[0]}_day", "") != day
+
+    @staticmethod
+    def _norm_msg(t: str) -> str:
+        import re as _re
+        return _re.sub(r"[^\w\u4e00-\u9fff]", "", str(t or ""))[:40]
+
     async def boredom_proactive(self):
         try:
             qqs = self.super_admin_qqs()
             if not qqs:
                 return
-            text = await self.llm_complete(
-                "你现在很无聊，想找超级管理员聊几句。用口语、自然、带点撒娇或抱怨无聊，一句即可，不提任何系统。",
-                "", max_tokens=80, temperature=0.9, timeout=30)
-            text = (text or "").strip()
-            if not text:
+            day = time.strftime("%Y-%m-%d")
+            if self.store.get_setting("boredom_day", "") != day:
+                self.store.set_setting("boredom_day", day)
+                self.store.set_setting("boredom_day_count", "0")
+                self.store.set_setting("boredom_unanswered", "0")
+            try:
+                sent = int(self.store.get_setting("boredom_day_count", "0") or 0)
+                unanswered = int(self.store.get_setting("boredom_unanswered", "0") or 0)
+            except Exception:
+                sent, unanswered = 0, 0
+            if sent >= 3 or unanswered >= 3:
                 return
+            try:
+                _last = float(self.store.get_setting("boredom_last_proactive", "0") or 0)
+            except Exception:
+                _last = 0
+            if time.time() - _last < 1800:
+                return
+            import json as _json
+            recent = []
+            try:
+                recent = _json.loads(self.store.get_setting("boredom_recent", "[]") or "[]")
+            except Exception:
+                recent = []
+            slot = self._meal_slot()
+            kind = None
+            if slot and self.store.get_setting(f"meal_{slot[0]}_day", "") != day:
+                kind = "meal"
+                meal_name, deadline = slot[1], slot[2]
+                prompt = (f"你是角色本人，想问超级管理员吃没吃{meal_name}。只问一次，口语、自然，"
+                          f"可以提醒别拖过{deadline}，不要催、不要连问、不要提系统。一句即可。")
+            elif unanswered >= 2:
+                return
+            else:
+                kinds = ["在不在", "忙什么", "分享小事", "找话题", "撒娇"]
+                kind = random.choice(kinds)
+                prompts = {
+                    "在不在": "你想找超级管理员，但不要总说无聊。问一句在不在/忙完没，自然口语，一句。",
+                    "忙什么": "问超级管理员今天在忙什么，别催回复，自然口语，一句。",
+                    "分享小事": "分享你刚做的一件生活小事（做饭/收拾/看到什么），一句，别求回复。",
+                    "找话题": "抛一个轻松的话题或刚看到的有意思的东西，一句，别问“陪我聊天”。",
+                    "撒娇": "用一点撒娇或吐槽的语气说一句，但不要重复“无聊到长蘑菇”，别求陪聊。",
+                }
+                prompt = prompts[kind]
+            text = await self.llm_complete(prompt, "", max_tokens=80, temperature=0.9, timeout=30)
+            text = " ".join(str(text or "").split())[:120]
+            if not text:
+                text = random.choice(["在不在，忙完了没", "今天忙啥呢", "我刚收拾完，歇会儿", "外面天气还行，你那边呢"])
+            if any(self._norm_msg(text) == self._norm_msg(x) for x in recent[-8:]):
+                if kind == "meal":
+                    text = f"吃{slot[1]}了没，别拖过{slot[2]}"
+                else:
+                    text = random.choice(["在不在，忙完没", "今天忙啥呢", "刚忙完一阵，歇会儿", "你那边天气咋样"])
             for qq in qqs:
                 await self.onebot_action("send_msg", {"message_type": "private", "user_id": str(qq),
                                                       "message": [{"type": "text", "data": {"text": text}}]})
-            log.info("无聊主动找超管: %s", text[:30])
+            if kind == "meal" and slot:
+                self.store.set_setting(f"meal_{slot[0]}_day", day)
+            recent = (recent + [text])[-20:]
+            self.store.set_setting("boredom_recent", _json.dumps(recent, ensure_ascii=False))
+            self.store.set_setting("boredom_day_count", str(sent + 1))
+            self.store.set_setting("boredom_unanswered", str(unanswered + 1))
+            self.store.set_setting("boredom_last_proactive", str(time.time()))
+            log.info("主动消息[%s]: %s", kind, text[:30])
         except Exception as e:
             log.warning("无聊主动失败: %s", e)
 
