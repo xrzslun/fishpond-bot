@@ -67,6 +67,7 @@ const GROUP_DEFS = [
   {key:'host', label:'租户', roles:['super'], subs:{
     super:[['hosting','租户管理']]
   }},
+  {key:'home3d', label:'小屋', roles:['super'], subs:{super:[['home3d','小屋']]}},
   {key:'acct', label:'账号', roles:['super','admin'], subs:{
     super:[['qr','扫码登录'],['accounts','账号管理'],['logins','登录日志']],
     admin:[['accounts','账号管理'],['logins','登录日志']]
@@ -74,7 +75,7 @@ const GROUP_DEFS = [
   {key:'logout', label:'退出'}
 ];
 let CURRENT_ROLE = 'super';
-const ALL_SECTIONS = '#status,#rest,#settings,#super,#bili,#gm,#persona,#pv,#voice,#qr,#wl,#kw,#pf,#auto,#gr,#end,#bored,#rate,#stk,#accounts,#logins,#mem,#slang,#img,#game,#hosting,#tokens,#selfcheck';
+const ALL_SECTIONS = '#status,#rest,#settings,#super,#bili,#gm,#persona,#pv,#voice,#qr,#wl,#kw,#pf,#auto,#gr,#end,#bored,#rate,#stk,#accounts,#logins,#mem,#slang,#img,#game,#hosting,#tokens,#selfcheck,#home3d';
 function showTab(name){
   document.querySelectorAll(ALL_SECTIONS).forEach(x=>x.classList.add('hidden'));
   const node = el(name);
@@ -97,6 +98,7 @@ function showTab(name){
   if(name==='rate') loadRate();
   if(name==='stk'){ loadStickers(); loadStickerPackInfo(); }
   if(name==='status') loadFriendBrief();
+  if(name==='home3d'){ if(window.initHome3D) initHome3D(); setTimeout(function(){ window.dispatchEvent(new Event('resize')); }, 60); }
   if(name==='slang') loadSlang();
   if(name==='world') loadWorld();
   if(name==='img') loadImageCfg();

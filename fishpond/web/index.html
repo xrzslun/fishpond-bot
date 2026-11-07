@@ -25,6 +25,24 @@
 <div class="tabs" id="subtabs" style="margin-top:14px"></div>
 <main id="main">
 
+<div id="home3d" class="hidden">
+  <div class="card">
+    <h2 style="font-size:15px;color:#e6e6e6;margin:0 0 4px">大肥鱼的小屋</h2>
+    <div class="hint" style="margin-bottom:8px">跟随世界状态变化：睡觉、做饭、刷手机、上班；点场景里的蓝点看细节。拖动旋转视角。</div>
+    <div style="position:relative;height:62vh;min-height:380px;background:#0b1020;border-radius:12px;overflow:hidden">
+      <canvas id="homecanvas" style="width:100%;height:100%;display:block"></canvas>
+      <div id="homehud" style="position:absolute;left:12px;top:12px;background:rgba(10,15,30,.72);color:#e6e6e6;padding:8px 10px;border-radius:10px;font-size:13px;line-height:1.55;pointer-events:none">加载中…</div>
+      <div id="homeinfo" style="display:none;position:absolute;left:50%;bottom:18px;transform:translateX(-50%);background:rgba(10,15,30,.88);color:#dbeafe;padding:8px 12px;border-radius:10px;font-size:13px;max-width:80%"></div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px">
+      <input id="homemodel" placeholder="自定义 GLB/GLTF 模型地址（可选）" style="flex:1;min-width:200px">
+      <button onclick="loadCustomModel()">加载模型</button>
+      <button onclick="resetHomeView()" style="background:#334155">重置视角</button>
+      <span id="homehint" class="hint"></span>
+    </div>
+  </div>
+</div>
+
 <div id="accounts" class="hidden">
   <div class="card">
     <h2 style="font-size:14px;color:#8b93a5;margin:0 0 8px">账号管理</h2>
@@ -1557,5 +1575,9 @@
 </footer>
 </main>
 <script>window.__FP_BASE__ = "__BASE__";</script>
+<script src="__BASE__/web/js/three.min.js"></script>
+<script src="__BASE__/web/js/OrbitControls.js"></script>
+<script src="__BASE__/web/js/GLTFLoader.js"></script>
 <script src="__BASE__/web/js/app.js"></script>
+<script src="__BASE__/web/js/home3d.js"></script>
 </body></html>
