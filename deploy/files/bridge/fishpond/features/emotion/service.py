@@ -349,6 +349,12 @@ class EmotionMixin:
                     "撒娇": "用一点撒娇或吐槽的语气说一句，但不要重复“无聊到长蘑菇”，别求陪聊。",
                 }
                 prompt = prompts[kind]
+            try:
+                wnote = self.weather_note("") if hasattr(self, "weather_note") else ""
+            except Exception:
+                wnote = ""
+            if wnote:
+                prompt = (wnote + "\n如果这条消息聊到天气，只能按上面的真实天气说，不能编热、冷、下雨。\n" + prompt)
             text = await self.llm_complete(prompt, "", max_tokens=80, temperature=0.9, timeout=30)
             text = " ".join(str(text or "").split())[:120]
             text = text.replace("超级管理员", addr).replace("管理员", addr)
