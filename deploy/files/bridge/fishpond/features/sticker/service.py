@@ -617,31 +617,52 @@ class StickerMixin:
             "没有完全匹配时，选一个情绪最接近的；实在找不到合适的才输出：无。\n候选：" + "、".join(descs) +
             f"\n对方说：{user_text[:200]}\n你回复：{reply[:200]}"
         )
+        model = str(provider.get("model") or self.model)
         payload = {
-            "model": provider.get("model") or self.model,
+            "model": model,
             "messages": [{"role": "user", "content": prompt}],
             "temperature": 0.2,
-            "max_tokens": 20,
+            "max_tokens": 180,
         }
+        # 思考型模型先限制思考，免得把输出额度吃光
+        if any(k in model.lower() for k in ("flash", "reason", "think")):
+            payload["reasoning_effort"] = "low"
+        text = ""
         try:
             async with self.http.post(
                 f"{provider['base_url']}/chat/completions",
                 json=payload,
                 headers={"Authorization": f"Bearer {provider['api_key']}", "Content-Type": "application/json"},
-                timeout=aiohttp.ClientTimeout(total=15),
+                timeout=aiohttp.ClientTimeout(total=20),
             ) as resp:
                 data = await resp.json(content_type=None)
+                if resp.status != 200 and "reasoning_effort" in payload:
+                    payload.pop("reasoning_effort", None)
+                    async with self.http.post(
+                        f"{provider['base_url']}/chat/completions",
+                        json=payload,
+                        headers={"Authorization": f"Bearer {provider['api_key']}", "Content-Type": "application/json"},
+                        timeout=aiohttp.ClientTimeout(total=20),
+                    ) as resp2:
+                        data = await resp2.json(content_type=None)
                 self.record_usage(data.get("usage"), "sticker")
                 text = ((data.get("choices") or [{}])[0].get("message", {}).get("content", "") or "").strip()
         except Exception as e:
             log.warning("智能选表情失败: %s", e)
             return None
-        ans = text.strip().strip('"').strip("'").strip()
+        lines = [x.strip() for x in str(text).splitlines() if x.strip()]
+        ans = lines[-1] if lines else ""
+        ans = ans.strip().strip('"“”\'').strip("。！？，、；： ")
         if not ans or ans == "无":
+            log.info("智能选表情无结果: finish=%s text=%r", str(data.get("choices",[{}])[0].get("finish_reason")), str(text)[:60])
             return None
         for r in rows:
             d = (r.get("description") or "").strip()
             if d and (d == ans or ans in d or d in ans):
+                return r["filename"]
+        for r in rows:
+            d = (r.get("description") or "").strip()
+            if d and any(x and x in ans for x in [d[:4], d[-4:]]):
                 return r["filename"]
         return None
 
@@ -772,7 +793,8 @@ class StickerMixin:
         if mode == "smart":
             name = await self.smart_pick_sticker(rows, user_text, reply)
             if not name:
-                return
+                name = random.choice([r["filename"] for r in rows])
+                log.info("智能选表情失败，随机兜底: %s", name)
         else:
             name = random.choice([r["filename"] for r in rows])
         recent = getattr(self, "_sticker_recent", [])
