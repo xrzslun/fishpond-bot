@@ -50,7 +50,7 @@ class PersonaMixin:
         rel_note = self.rel_note(uid) if uid else ""
         trait_note = self.traits_note()
         try:
-            world_note = self.world_context(uid, gid)
+            world_note = self.world_context(uid, gid, user_text)
         except Exception:
             world_note = ""
         try:

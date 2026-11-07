@@ -353,8 +353,9 @@ class EmotionMixin:
                 wnote = self.weather_note("") if hasattr(self, "weather_note") else ""
             except Exception:
                 wnote = ""
-            if wnote:
-                prompt = (wnote + "\n如果这条消息聊到天气，只能按上面的真实天气说，不能编热、冷、下雨。\n" + prompt)
+            if wnote and kind in ("分享小事", "找话题"):
+                prompt = ("背景天气（不要主动提，除非这条消息本身适合聊天气）：" + wnote +
+                          "\n不要每条都提天气；只有自然相关时才带一句，且不能编造。\n" + prompt)
             text = await self.llm_complete(prompt, "", max_tokens=80, temperature=0.9, timeout=30)
             text = " ".join(str(text or "").split())[:120]
             text = text.replace("超级管理员", addr).replace("管理员", addr)

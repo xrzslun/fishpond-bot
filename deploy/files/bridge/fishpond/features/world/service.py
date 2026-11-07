@@ -1369,7 +1369,13 @@ class WorldMixin:
         d = _dt.date(2026, 1, 1) + _dt.timedelta(days=day)
         return f"{d.month}月{d.day}日 周{WEEK[d.weekday()]} {minutes // 60:02d}:{minutes % 60:02d}"
 
-    def world_context(self, uid: str = "", gid: str = "") -> str:
+    @staticmethod
+    def weather_relevant(text: str) -> bool:
+        t = str(text or "")
+        return any(k in t for k in ("天气", "气温", "下雨", "雨", "热", "冷", "穿", "伞", "风",
+                                    "雾霾", "出门", "晒", "降温", "升温", "多少度"))
+
+    def world_context(self, uid: str = "", gid: str = "", query: str = "") -> str:
         if self.store.get_setting("world_enabled", "1") != "1":
             return ""
         st = self.world_state()
@@ -1405,7 +1411,8 @@ class WorldMixin:
         except Exception:
             pass
         try:
-            extra += self.weather_note(uid)
+            if self.weather_relevant(query):
+                extra += self.weather_note(uid)
         except Exception:
             pass
         prof = self._profile()
