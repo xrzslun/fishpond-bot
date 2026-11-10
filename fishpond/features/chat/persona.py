@@ -12,6 +12,43 @@ from fishpond.registry import add
 log = __import__("logging").getLogger("qqbridge")
 
 
+def decode_chat_response(raw):
+    """解析普通 JSON 或 SSE(data:) 的对话返回，统一取 content 和 usage。"""
+    raw = str(raw or "")
+    if raw.lstrip().startswith("data:"):
+        content, usage = "", None
+        for line in raw.splitlines():
+            line = line.strip()
+            if not line.startswith("data:"):
+                continue
+            payload = line[5:].strip()
+            if payload == "[DONE]":
+                break
+            try:
+                obj = json.loads(payload)
+            except Exception:
+                continue
+            if obj.get("usage"):
+                usage = obj.get("usage")
+            ch = (obj.get("choices") or [{}])[0]
+            delta = ch.get("delta") or {}
+            if delta.get("content"):
+                content += str(delta["content"])
+            msg = ch.get("message") or {}
+            if msg.get("content") and not content:
+                content = str(msg["content"])
+        return content.strip(), usage, {}
+    try:
+        data = json.loads(raw)
+    except Exception:
+        return "", None, {}
+    try:
+        content = (data.get("choices") or [{}])[0].get("message", {}).get("content") or ""
+    except Exception:
+        content = ""
+    return str(content).strip(), data.get("usage"), data
+
+
 class PersonaMixin:
     def persona_text(self) -> str:
         active = (self.store.get_setting("persona_active", "0") or "0").strip()
@@ -104,13 +141,15 @@ class PersonaMixin:
                 headers=headers,
                 timeout=aiohttp.ClientTimeout(total=self.timeout),
             ) as resp:
-                data = await resp.json(content_type=None)
-                self.record_usage(data.get("usage"), "chat", uid=uid)
+                raw = await resp.text()
+                text, usage, data = decode_chat_response(raw)
+                self.record_usage(usage, "chat", uid=uid)
                 if resp.status != 200:
                     err = (data or {}).get("error", {}).get("message", str(resp.status))
                     log.warning("DeepSeek API 错误: %s", err)
                     return "（AI 服务暂时不可用，稍后再试）"
-                text = data["choices"][0]["message"]["content"]
+                if not text:
+                    log.warning("模型返回空内容: %s", raw[:160])
         except Exception as e:
             log.warning("DeepSeek 调用异常: %s", e)
             return "（AI 服务暂时不可用，稍后再试）"

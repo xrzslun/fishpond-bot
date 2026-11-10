@@ -11,6 +11,7 @@ from datetime import datetime
 import aiohttp
 
 from fishpond.registry import add
+from fishpond.features.chat.persona import decode_chat_response
 
 log = __import__("logging").getLogger("qqbridge")
 
@@ -236,12 +237,12 @@ class ChatMixin:
                 ) as resp:
                     if resp.status != 200:
                         return ""
-                    data = await resp.json(content_type=None)
-                    self.record_usage(data.get("usage"), "complete")
-                    msg = ((data.get("choices") or [{}])[0].get("message") or {})
-                    content = (msg.get("content") or "").strip()
+                    raw = await resp.text()
+                    content, usage, data = decode_chat_response(raw)
+                    self.record_usage(usage, "complete")
                     if content:
                         return content
+                    msg = ((data.get("choices") or [{}])[0].get("message") or {})
                     if msg.get("reasoning_content") and mt < 3000:
                         mt = min(4000, max(1500, mt * 4))
                         continue
