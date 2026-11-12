@@ -41,6 +41,17 @@ class EconomyMixin:
         except Exception:
             return 0
 
+    def balance_interval(self, b: float, tier: int, level: int) -> int:
+        """余额越少提醒越频繁；还有几块钱时只偶尔提一次。"""
+        if tier >= 3:
+            # 最后几毛钱：10~20 分钟
+            return max(600, 1200 - level * 6)
+        if tier == 2:
+            # 1 元以下：约 1.5 小时
+            return 5400
+        # 1~3 元：约 4 小时
+        return 14400
+
     def balance_threshold(self) -> float:
         try:
             return max(0.0, float(self.store.get_setting("economy_threshold", "0.3") or 0.3))
@@ -96,7 +107,7 @@ class EconomyMixin:
                     tier = 3 if b < self.balance_threshold() else (2 if b < 1 else (1 if b < 3 else 0))
                     old_tier = int(self.store.get_setting("ai_balance_tier", "0") or 0)
                     if tier > 0:
-                        interval = max(300, 1200 - level * 6) if tier >= 3 else max(900, 2400 - level * 18)
+                        interval = self.balance_interval(b, tier, level)
                         savings = tier >= 3 and old_tier < 3
                         if tier > old_tier or now - last >= interval:
                             await self.balance_alert(b, tier, savings_mode=savings)
